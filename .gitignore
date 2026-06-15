@@ -5,3 +5,19 @@ node_modules/
 *.log
 *.pdf
 *.key
+
+# Exclude scheduler files from Git
+admin.html
+admin.js
+api.php
+api/
+app.js
+data.json
+package.json
+package-lock.json
+server.js
+style.css
+vercel.json
+word-game/
+safety/
+scheduler_index.html
