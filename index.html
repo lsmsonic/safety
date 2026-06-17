@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src https://api.anthropic.com https://generativelanguage.googleapis.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src https://api.anthropic.com">
 <title>AI 안전보건 위험성 평가</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,19 +18,20 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:16px;padding-bottom:74px}
 
 /* Header */
-.hdr{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;padding:14px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.hdr-inner{max-width:600px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.hdr{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;padding:14px 16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .hdr-icon{width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
 .hdr-text h1{font-size:16px;font-weight:700}
 .hdr-text p{font-size:11px;opacity:.8;margin-top:1px}
 
 /* Tab nav */
-.tab-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #dde;display:flex;z-index:200;box-shadow:0 -2px 8px rgba(0,0,0,.06)}
+.tab-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #dde;display:flex;z-index:200;box-shadow:0 -2px 8px rgba(0,0,0,.06);max-width:600px;margin:0 auto}
 .tab-btn{flex:1;padding:10px 4px 8px;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;font-size:10px;color:#90a4ae;gap:3px;transition:color .2s}
 .tab-btn.active{color:var(--blue);font-weight:700}
 .tab-btn svg{width:22px;height:22px}
 
 /* Pages */
-.page{display:none;padding:16px;min-height:calc(100vh - 130px)}
+.page{display:none;padding:16px;min-height:calc(100vh - 130px);max-width:600px;margin-left:auto;margin-right:auto}
 .page.active{display:block}
 
 /* Cards */
@@ -77,8 +78,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
 .result-header.medium{background:var(--medium-bg);border:2px solid var(--medium-border)}
 .result-header.low{background:var(--low-bg);border:2px solid var(--low-border)}
 .result-icon{font-size:40px;flex-shrink:0}
-.result-info h2{font-size:17px;font-weight:800}
+.result-info h2{font-size:16px;font-weight:800}
 .result-info p{font-size:13px;margin-top:4px;color:var(--sub);line-height:1.5}
+.result-score{flex-shrink:0;width:74px;border-radius:14px;padding:9px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;line-height:1}
+.result-score.critical{background:var(--critical)}
+.result-score.high{background:var(--high)}
+.result-score.medium{background:#f9a825;color:#4a3500}
+.result-score.medium .rs-grade{background:rgba(0,0,0,.12)}
+.result-score.low{background:var(--low)}
+.rs-cap{font-size:9.5px;font-weight:700;opacity:.9;margin-bottom:3px}
+.rs-num{font-size:30px;font-weight:800}
+.rs-unit{font-size:12px;font-weight:700}
+.rs-grade{font-size:11.5px;font-weight:800;margin-top:5px;background:rgba(255,255,255,.28);padding:2px 9px;border-radius:8px;white-space:nowrap}
 .grade-chip{display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;color:#fff;margin-bottom:6px}
 .chip-critical{background:var(--critical)}
 .chip-high{background:var(--high)}
@@ -107,11 +118,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
 .hc-head.medium{background:var(--medium-bg)}
 .hc-head.low{background:var(--low-bg)}
 .hc-icon{font-size:24px;flex-shrink:0}
-.hc-info{flex:1}
-.hc-title{font-size:14px;font-weight:700}
-.hc-type{font-size:11px;color:var(--sub);margin-top:2px}
-.hc-score{text-align:right;flex-shrink:0}
-.score-num{font-size:22px;font-weight:800}
+.hc-info{flex:1;min-width:0}
+.hc-title{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hc-type{font-size:11px;color:var(--sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hc-score{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px}
+.hc-gradetag{font-size:11px;font-weight:800;color:#fff;padding:2px 9px;border-radius:9px;line-height:1.35;white-space:nowrap}
+.score-num{font-size:21px;font-weight:800;line-height:1}
+.score-unit{font-size:11px;font-weight:700;margin-left:1px}
 .score-num.critical{color:var(--critical)}
 .score-num.high{color:var(--high)}
 .score-num.medium{color:#f57f17}
@@ -141,11 +154,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
 .toggle-arrow.open{transform:rotate(180deg)}
 
 /* Photo thumb in result */
-.photo-wrap img.result-photo{max-height:380px;max-width:100%;width:auto;height:auto;object-fit:contain;display:block}
+.result-photo{display:block}
 
 /* Photo hazard markers */
-.photo-wrap{position:relative;margin:0 auto 12px;border-radius:12px;overflow:hidden;line-height:0;max-height:380px;max-width:100%;width:fit-content;display:flex;justify-content:center;align-items:center;background-color:#eaeff4;box-shadow:0 4px 12px rgba(0,0,0,0.08);cursor:zoom-in}
-.photo-wrap img{max-height:380px;max-width:100%;width:auto;height:auto;display:block;border-radius:12px;object-fit:contain;margin:0}
+.photo-wrap{position:relative;display:block;width:-moz-fit-content;width:fit-content;max-width:100%;margin:0 auto 6px;border-radius:10px;overflow:hidden;line-height:0;background:#0d1b2a}
+.photo-wrap img{display:block;width:auto;height:auto;max-width:100%;max-height:46vh;border-radius:10px;margin:0;object-fit:contain}
 .marker-layer{position:absolute;inset:0;pointer-events:none}
 .hz-marker{position:absolute;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:auto;padding:0;line-height:1;transition:transform .15s}
 .hz-marker::before{content:'';position:absolute;inset:-4px;border-radius:50%}/* 터치 영역 44px+ 확보 */
@@ -248,7 +261,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
 /* ── 카드 ↔ 사진 연결 ── */
 .locate-btn{display:inline-flex;align-items:center;gap:4px;background:var(--blue-light);color:var(--blue);border:1px solid #90caf9;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;margin-top:5px}
 .no-marker-badge{display:inline-flex;align-items:center;gap:4px;background:#eceff1;color:#546e7a;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;margin-top:5px}
-.hc-preview{font-size:12px;color:var(--blue);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hc-preview{font-size:12px;color:var(--blue);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 
 /* ── 모두 펼치기/접기 ── */
 .expand-toggle{background:none;border:1.5px solid #cfd8dc;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--sub);cursor:pointer}
@@ -261,7 +274,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
 .lightbox.open{display:flex}
 .lightbox .lb-inner{position:relative;max-width:100%;max-height:100%;line-height:0}
 .lightbox img{max-width:100%;max-height:88vh;width:auto;height:auto;border-radius:8px}
-.lightbox .lb-inner img.result-photo{max-height:88vh;max-width:100%;width:auto;height:auto;object-fit:contain}
 .lightbox .marker-layer{pointer-events:none}
 .lightbox .hz-marker{pointer-events:none}
 .lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:rgba(255,255,255,.75);font-size:13px;font-weight:600}
@@ -323,10 +335,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
 <body>
 
 <div class="hdr">
-  <div class="hdr-icon">🛡️</div>
-  <div class="hdr-text">
-    <h1>AI 안전보건 위험성 평가</h1>
-    <p id="hdr-sub">사진 한 장으로 현장 위험요소 자동 분석</p>
+  <div class="hdr-inner">
+    <div class="hdr-icon">🛡️</div>
+    <div class="hdr-text">
+      <h1>AI 안전보건 위험성 평가</h1>
+      <p id="hdr-sub">사진 한 장으로 현장 위험요소 자동 분석</p>
+    </div>
   </div>
 </div>
 
@@ -351,7 +365,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
       <h3>시작하려면 설정이 필요합니다</h3>
       <p>
         <b>① 시연/테스트용</b> → 설정 탭에서 <b>데모 모드</b>를 켜면<br>API 키 없이 즉시 사용 가능합니다.<br><br>
-        <b>② 실제 AI 분석</b> → <b>Google AI Studio</b> 또는 <b>Anthropic Console</b>에서<br>무료 가입 후 API 키를 발급하세요.<br>(Google AI Studio는 무료 사용이 가능합니다)
+        <b>② 실제 AI 분석</b> → <b>console.anthropic.com</b>에서<br>무료 가입 후 API 키를 발급하세요.<br>(가입 시 $5 무료 크레딧 제공)
       </p>
       <button class="analyze-btn" onclick="showPage('settings',document.querySelectorAll('.tab-btn')[3])" style="max-width:220px;margin:0 auto;font-size:14px;padding:12px;">
         ⚙️ 설정으로 이동
@@ -382,7 +396,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
           <input type="file" id="photo-gal" accept="image/*" style="display:none" onchange="loadPhoto(this)">
         </label>
       </div>
-      <p class="privacy-note"><span>🔒</span><span>사진은 분석을 위해 외부 AI 서버(Google 또는 Anthropic)로 전송됩니다. 작업자 얼굴 등 <b>개인 식별 정보가 포함되지 않도록</b> 촬영 각도에 유의해 주세요. 사진과 분석 기록은 이 기기의 브라우저에만 저장됩니다.</span></p>
+      <p class="privacy-note"><span>🔒</span><span>사진은 분석을 위해 외부 AI 서버(Anthropic)로 전송됩니다. 작업자 얼굴 등 <b>개인 식별 정보가 포함되지 않도록</b> 촬영 각도에 유의해 주세요. 사진과 분석 기록은 이 기기의 브라우저에만 저장됩니다.</span></p>
     </div>
     <!-- 작업 설명 (선택) -->
     <div class="card">
@@ -489,21 +503,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
     </div>
     <div class="card-title" style="margin-top:4px;">🔑 실제 AI 분석 (API 키)</div>
     <div class="form-grp">
-      <label>API 제공사 (API Provider)</label>
-      <select id="cfg-provider" onchange="onProviderChange()">
-        <option value="gemini">Gemini API (Google)</option>
-        <option value="anthropic">Anthropic API (Claude)</option>
-      </select>
-    </div>
-    <div class="form-grp">
-      <label id="api-key-label">Gemini API 키</label>
+      <label>Anthropic API 키</label>
       <div class="api-key-wrap">
-        <input type="password" id="cfg-apikey" placeholder="AIzaSy...">
+        <input type="password" id="cfg-apikey" placeholder="sk-ant-api03-...">
         <button class="eye-btn" onclick="toggleApiKey()">👁</button>
       </div>
-      <p class="api-hint" id="api-key-hint">
-        • 발급: <b>aistudio.google.com</b> (Google AI Studio)에서 무료로 API 키를 발급할 수 있습니다.<br>
-        • API 키는 이 기기의 브라우저에만 저장됩니다.
+      <p class="api-hint">
+        • 발급: <b>console.anthropic.com</b> 무료 가입 → API Keys (가입 시 $5 무료 제공)<br>
+        • API 키는 이 기기의 브라우저에만 저장됩니다.<br>
+        • 분석 1회당 약 10~30원 수준
       </p>
       <div class="key-warning">
         🔐 <b>보안 안내:</b> API 키는 암호화 없이 이 브라우저에 저장됩니다. <b>공용·공유 PC에서는 키를 저장하지 마시고</b>, 사용 후에는 아래 버튼으로 키를 삭제하세요. 조직 단위 배포 시에는 키를 브라우저에 두지 않는 중계 서버(프록시) 방식을 권장합니다.
@@ -513,7 +521,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
     <div class="form-grp">
       <label>분석 모델</label>
       <select id="cfg-model">
-        <!-- Dynamic content loaded via onProviderChange() -->
+        <option value="claude-sonnet-4-6">claude-sonnet-4-6 (권장 — 정확도 높음)</option>
+        <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (빠름 — 비용 절감)</option>
       </select>
     </div>
     <button class="btn-save" onclick="saveSettings()">설정 저장</button>
@@ -843,92 +852,40 @@ async function startAnalysis() {
 
   try {
     setLoadingStep('AI에 전송 중...');
-    let raw = '';
-    const provider = cfg.provider || 'gemini';
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: cfg.model || 'claude-sonnet-4-6',
+        max_tokens: 8192,
+        system: SYSTEM_PROMPT,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64data } },
+            { type: 'text', text: userText }
+          ]
+        }]
+      })
+    });
 
-    if (provider === 'gemini') {
-      const modelName = cfg.model || 'gemini-2.5-flash';
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              {
-                inlineData: {
-                  mimeType: 'image/jpeg',
-                  data: b64data
-                }
-              },
-              {
-                text: userText
-              }
-            ]
-          }],
-          systemInstruction: {
-            parts: [{
-              text: SYSTEM_PROMPT
-            }]
-          },
-          generationConfig: {
-            responseMimeType: 'application/json'
-          }
-        })
-      });
+    setLoadingStep('결과를 처리하는 중...');
 
-      setLoadingStep('결과를 처리하는 중...');
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || `Gemini API 오류 (${response.status})`);
-      }
-
-      const resJson = await response.json();
-      raw = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    } else {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: cfg.model || 'claude-3-5-sonnet-20241022',
-          max_tokens: 8192,
-          system: SYSTEM_PROMPT,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64data } },
-              { type: 'text', text: userText }
-            ]
-          }]
-        })
-      });
-
-      setLoadingStep('결과를 처리하는 중...');
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || `Claude API 오류 (${res.status})`);
-      }
-
-      const data = await res.json();
-      const textBlocks = (data.content || []).filter(b => b.type === 'text');
-      raw = textBlocks.map(b => b.text).join('\n').trim();
-
-      if (data.stop_reason === 'max_tokens') {
-        console.error('[AI 응답 잘림] stop_reason=max_tokens. 원본:', raw);
-        throw new Error('AI 응답이 길이 제한으로 잘렸습니다. 다시 시도해 주세요.');
-      }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API 오류 (${res.status})`);
     }
+
+    const data = await res.json();
+
+    // 텍스트 블록을 타입 기준으로 탐색 (위치 가정 금지 — content[0]이 text가 아닐 수 있음)
+    const textBlocks = (data.content || []).filter(b => b.type === 'text');
+    const raw = textBlocks.map(b => b.text).join('\n').trim();
 
     if (!raw) {
       console.error('[AI 응답 오류] 텍스트 블록 없음. 전체 응답:', data);
@@ -1017,11 +974,12 @@ function renderResult(data) {
 
   const topGrade = data.top_grade || 'low';
   const gradeInfo = {
-    critical:{emoji:'🚨',label:'매우 높음 — 즉시 조치 필요'},
-    high:{emoji:'⚠️',label:'높음 — 단기 개선 필요'},
-    medium:{emoji:'🔔',label:'보통 — 개선 계획 수립'},
-    low:{emoji:'✅',label:'낮음 — 현 수준 유지'}
+    critical:{label:'즉시 조치가 필요합니다'},
+    high:{label:'단기 개선이 필요합니다'},
+    medium:{label:'개선 계획을 수립하세요'},
+    low:{label:'현 수준을 유지하세요'}
   }[topGrade];
+  const maxScore = hazards.reduce((m,h) => Math.max(m, h.score), 0);
 
   // 등급별 건수 요약
   const gcnt = {critical:0,high:0,medium:0,low:0};
@@ -1033,12 +991,15 @@ function renderResult(data) {
 
   let html = '';
 
-  // 전체 등급 헤더 (한눈에 보는 등급 분포 포함)
+  // 전체 등급 헤더 — 종합 위험점수 + 등급을 한눈에
   html += `<div class="result-header ${topGrade}">
-    <div class="result-icon">${gradeInfo.emoji}</div>
+    <div class="result-score ${topGrade}">
+      <span class="rs-cap">종합 위험점수</span>
+      <span><span class="rs-num">${maxScore}</span><span class="rs-unit">점</span></span>
+      <span class="rs-grade">${GRADE_EMOJI[topGrade]} ${GRADE_LABEL[topGrade]}</span>
+    </div>
     <div class="result-info">
-      <span class="grade-chip chip-${topGrade}">${GRADE_EMOJI[topGrade]} ${GRADE_LABEL[topGrade]}</span>
-      <h2>${gradeInfo.label}</h2>
+      <h2>${GRADE_LABEL[topGrade]} — ${gradeInfo.label}</h2>
       <p>위험요소 <b>${hazards.length}건</b> 발견 &nbsp;·&nbsp; ${new Date().toLocaleDateString('ko-KR')}</p>
       <div class="grade-summary">${gsChips}</div>
     </div>
@@ -1083,8 +1044,8 @@ function renderResult(data) {
             <div class="hc-preview" id="hprev-${i}">${firstImp ? '→ ' + esc(firstImp) : ''}</div>
           </div>
           <div class="hc-score">
-            <div class="score-num ${h.grade}">${h.score}</div>
-            <div class="score-label">위험 점수</div>
+            <span class="hc-gradetag bg-${h.grade}">${GRADE_LABEL[h.grade]}</span>
+            <span class="score-num ${h.grade}">${h.score}<span class="score-unit">점</span></span>
           </div>
           <div class="toggle-arrow" id="arr-${i}">▾</div>
         </div>
@@ -1314,7 +1275,7 @@ function openHistDetail(id) {
       <div class="hc-head ${h.grade}" style="cursor:default;">
         <div class="hc-icon">${TYPE_ICON[h.type]||'⚠️'}</div>
         <div class="hc-info"><div class="hc-title"><span class="hc-num ${h.grade}">${i+1}</span>${esc(h.title)}</div><div class="hc-type">${esc(h.type)}</div></div>
-        <div class="hc-score"><div class="score-num ${h.grade}">${h.score}</div><div class="score-label">점수</div></div>
+        <div class="hc-score"><span class="hc-gradetag bg-${h.grade}">${GRADE_LABEL[h.grade]}</span><span class="score-num ${h.grade}">${h.score}<span class="score-unit">점</span></span></div>
       </div>
       ${noLoc}
       <div class="hc-body open">
@@ -1410,68 +1371,9 @@ function applyAccessState() {
   else         { notice.style.display='block'; form.style.display='none'; }
   if (banner) banner.style.display = cfg.demoMode ? 'flex' : 'none';
 }
-function onProviderChange() {
-  const prov = document.getElementById('cfg-provider').value;
-  const keyLabel = document.getElementById('api-key-label');
-  const keyInput = document.getElementById('cfg-apikey');
-  const keyHint = document.getElementById('api-key-hint');
-  const modelSelect = document.getElementById('cfg-model');
-
-  if (prov === 'gemini') {
-    keyLabel.textContent = 'Gemini API 키';
-    keyInput.placeholder = 'AIzaSy...';
-    keyHint.innerHTML = `
-      • 발급: <b>aistudio.google.com</b> (Google AI Studio)에서 무료로 API 키를 발급할 수 있습니다.<br>
-      • API 키는 이 기기의 브라우저에만 저장됩니다.<br>
-      • 무료 요금제 사용 시 호출당 비용이 들지 않습니다. (분당 약 15회 호출 제한)
-    `;
-    
-    modelSelect.innerHTML = `
-      <option value="gemini-2.5-flash">gemini-2.5-flash (기본 — 추천, 빠르고 똑똑함)</option>
-      <option value="gemini-2.5-pro">gemini-2.5-pro (고성능 — 정확도 매우 높음)</option>
-      <option value="gemini-1.5-flash">gemini-1.5-flash (이전 세대 속도형)</option>
-      <option value="gemini-1.5-pro">gemini-1.5-pro (이전 세대 고성능)</option>
-    `;
-  } else {
-    keyLabel.textContent = 'Anthropic API 키';
-    keyInput.placeholder = 'sk-ant-api03-...';
-    keyHint.innerHTML = `
-      • 발급: <b>console.anthropic.com</b> 무료 가입 → API Keys (가입 시 $5 무료 제공)<br>
-      • API 키는 이 기기의 브라우저에만 저장됩니다.<br>
-      • 분석 1회당 약 10~30원 수준
-    `;
-    
-    modelSelect.innerHTML = `
-      <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022 (권장 — 정확도 높음)</option>
-      <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022 (빠름 — 비용 절감)</option>
-    `;
-  }
-}
 function loadSettings() {
-  if (!cfg.provider) {
-    if (cfg.apiKey && cfg.apiKey.startsWith('sk-ant')) {
-      cfg.provider = 'anthropic';
-    } else {
-      cfg.provider = 'gemini';
-    }
-  }
-  if (cfg.provider === 'gemini') {
-    if (!cfg.model || !cfg.model.startsWith('gemini')) {
-      cfg.model = 'gemini-2.5-flash';
-    }
-  } else {
-    if (!cfg.model || !cfg.model.startsWith('claude')) {
-      cfg.model = 'claude-3-5-sonnet-20241022';
-    }
-  }
-
-  document.getElementById('cfg-provider').value = cfg.provider;
-  onProviderChange();
-  
   document.getElementById('cfg-apikey').value  = cfg.apiKey||'';
-  if (cfg.model) {
-    document.getElementById('cfg-model').value = cfg.model;
-  }
+  document.getElementById('cfg-model').value   = cfg.model||'claude-sonnet-4-6';
   document.getElementById('cfg-company').value = cfg.company||'';
   document.getElementById('cfg-dept').value    = cfg.dept||'';
   document.getElementById('cfg-manager').value = cfg.manager||'';
@@ -1481,7 +1383,6 @@ function loadSettings() {
 }
 function saveSettings() {
   cfg = {
-    provider: document.getElementById('cfg-provider').value,
     apiKey:   document.getElementById('cfg-apikey').value.trim(),
     model:    document.getElementById('cfg-model').value,
     demoMode: document.getElementById('cfg-demo').checked,
@@ -1556,7 +1457,7 @@ function printReport() {
       <div class="hc-head ${h.grade}">
         <div class="hc-icon">${TYPE_ICON[h.type]||'⚠️'}</div>
         <div class="hc-info"><div class="hc-title"><span class="hc-num ${h.grade}">${i+1}</span>${esc(h.title)}</div><div class="hc-type">${esc(h.type)} · 빈도 ${h.frequency} × 강도 ${h.severity}</div></div>
-        <div class="hc-score"><div class="score-num ${h.grade}">${h.score}</div><div class="score-label">${GRADE_LABEL[h.grade]}</div></div>
+        <div class="hc-score"><span class="hc-gradetag bg-${h.grade}">${GRADE_LABEL[h.grade]}</span><span class="score-num ${h.grade}">${h.score}<span class="score-unit">점</span></span></div>
       </div>
       <div class="hc-body open">
         <div class="hc-detail-row"><div class="hk">설명</div><div class="hv">${esc(h.description)}</div></div>
