@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src https://api.anthropic.com https://generativelanguage.googleapis.com">
+<title>AI 안전보건 위험성 평가</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1565C0;--blue-dark:#0d47a1;--blue-light:#e3f2fd;
+  --critical:#c62828;--critical-bg:#ffebee;--critical-border:#ef9a9a;
+  --high:#e65100;--high-bg:#fff3e0;--high-border:#ffcc80;
+  --medium:#f57f17;--medium-bg:#fffde7;--medium-border:#fff176;
+  --low:#2e7d32;--low-bg:#e8f5e9;--low-border:#a5d6a7;
+  --bg:#f0f4f8;--card:#fff;--text:#1a1a2e;--sub:#607d8b
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;background:#dae1e7;color:var(--text);font-size:16px;padding-bottom:74px}
+
+.app-wrap{max-width:640px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;display:flex;flex-direction:column;box-shadow:0 0 20px rgba(0,0,0,0.08)}
+
+/* Header */
+.hdr{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;padding:14px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.hdr-icon{width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.hdr-text h1{font-size:16px;font-weight:700}
+.hdr-text p{font-size:11px;opacity:.8;margin-top:1px}
+
+/* Tab nav */
+.tab-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:640px;background:#fff;border-top:1px solid #dde;display:flex;z-index:200;box-shadow:0 -2px 8px rgba(0,0,0,.06)}
+.tab-btn{flex:1;padding:10px 4px 8px;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;font-size:10px;color:#90a4ae;gap:3px;transition:color .2s}
+.tab-btn.active{color:var(--blue);font-weight:700}
+.tab-btn svg{width:22px;height:22px}
+
+/* Pages */
+.page{display:none;padding:16px;min-height:calc(100vh - 130px)}
+.page.active{display:block}
+
+/* Cards */
+.card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.card-title{font-size:13px;font-weight:700;color:var(--sub);margin-bottom:12px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.5px}
+
+/* Upload zone */
+.upload-zone{border:3px dashed #90caf9;border-radius:16px;background:var(--blue-light);padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:#bbdefb}
+.upload-zone.has-image{border-style:solid;border-color:var(--blue);padding:0;height:320px;display:flex;align-items:center;justify-content:center;background-color:#eaeff4}
+.upload-zone img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:13px;display:block}
+.upload-zone .upload-icon{font-size:52px;margin-bottom:12px;display:block}
+.upload-zone h3{font-size:17px;font-weight:700;color:var(--blue);margin-bottom:6px}
+.upload-zone p{font-size:13px;color:var(--sub)}
+.upload-input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-actions{display:flex;gap:10px;margin-top:10px}
+.upload-btn{flex:1;padding:13px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s}
+.btn-camera{background:var(--blue);color:#fff}
+.btn-camera:active{background:var(--blue-dark)}
+.btn-gallery{background:#fff;color:var(--blue);border:2px solid var(--blue)}
+.change-photo{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:20px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600;z-index:5}
+
+/* Description input */
+.desc-input{width:100%;padding:12px;border:1.5px solid #dde;border-radius:10px;font-size:15px;background:#fafafa;color:var(--text);outline:none;resize:none;min-height:72px}
+.desc-input:focus{border-color:var(--blue);background:#fff}
+
+/* Analyze button */
+.analyze-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--blue),var(--blue-dark));color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 15px rgba(21,101,192,.35);transition:all .2s}
+.analyze-btn:disabled{background:#b0bec5;box-shadow:none;cursor:not-allowed}
+.analyze-btn:not(:disabled):active{transform:scale(.98)}
+
+/* Loading */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,.7);z-index:800;align-items:center;justify-content:center;flex-direction:column;gap:20px;backdrop-filter:blur(4px)}
+.loading-overlay.show{display:flex}
+.spinner{width:52px;height:52px;border:5px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#fff;font-size:15px;font-weight:600;text-align:center;line-height:1.6}
+.loading-step{color:rgba(255,255,255,.7);font-size:13px;margin-top:4px}
+
+/* Results */
+.result-header{border-radius:14px;padding:18px;margin-bottom:14px;display:flex;align-items:center;gap:14px}
+.result-header.critical{background:var(--critical-bg);border:2px solid var(--critical-border)}
+.result-header.high{background:var(--high-bg);border:2px solid var(--high-border)}
+.result-header.medium{background:var(--medium-bg);border:2px solid var(--medium-border)}
+.result-header.low{background:var(--low-bg);border:2px solid var(--low-border)}
+.result-icon{font-size:40px;flex-shrink:0}
+.result-info h2{font-size:17px;font-weight:800}
+.result-info p{font-size:13px;margin-top:4px;color:var(--sub);line-height:1.5}
+.grade-chip{display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;color:#fff;margin-bottom:6px}
+.chip-critical{background:var(--critical)}
+.chip-high{background:var(--high)}
+.chip-medium{background:#f9a825;color:#333}
+.chip-low{background:var(--low)}
+
+/* Urgent actions */
+.urgent-box{background:#fff3f3;border:2px solid #ff8a80;border-radius:12px;padding:14px;margin-bottom:14px}
+.urgent-box h4{color:var(--critical);font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.urgent-box ul{padding-left:18px}
+.urgent-box li{font-size:13px;color:#5d1a1a;line-height:2}
+
+/* Scene description */
+.scene-box{background:#f8faff;border:1.5px solid #bbdefb;border-radius:12px;padding:14px;margin-bottom:14px}
+.scene-box p{font-size:13px;color:#37474f;line-height:1.7}
+
+/* Hazard cards */
+.hazard-card{border-radius:12px;margin-bottom:12px;overflow:hidden;border:1.5px solid #eee;background:#fff}
+.hazard-card.critical{border-color:var(--critical-border)}
+.hazard-card.high{border-color:var(--high-border)}
+.hazard-card.medium{border-color:#ffe082}
+.hazard-card.low{border-color:var(--low-border)}
+.hc-head{padding:13px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.hc-head.critical{background:var(--critical-bg)}
+.hc-head.high{background:var(--high-bg)}
+.hc-head.medium{background:var(--medium-bg)}
+.hc-head.low{background:var(--low-bg)}
+.hc-icon{font-size:24px;flex-shrink:0}
+.hc-info{flex:1}
+.hc-title{font-size:14px;font-weight:700}
+.hc-type{font-size:11px;color:var(--sub);margin-top:2px}
+.hc-score{text-align:right;flex-shrink:0}
+.score-num{font-size:22px;font-weight:800}
+.score-num.critical{color:var(--critical)}
+.score-num.high{color:var(--high)}
+.score-num.medium{color:#f57f17}
+.score-num.low{color:var(--low)}
+.score-label{font-size:10px;color:var(--sub)}
+.hc-body{padding:14px;border-top:1px solid #f0f0f0;display:none}
+.hc-body.open{display:block}
+.hc-detail-row{margin-bottom:10px}
+.hk{font-size:11px;font-weight:700;color:var(--sub);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
+.hv{font-size:13px;color:var(--text);line-height:1.6}
+.score-matrix{display:flex;gap:12px;align-items:center;background:#f8f9fa;padding:10px 12px;border-radius:8px}
+.matrix-cell{text-align:center}
+.matrix-num{font-size:20px;font-weight:800}
+.matrix-lbl{font-size:10px;color:var(--sub)}
+.matrix-x{font-size:16px;color:#ccc}
+.matrix-result{font-size:13px;font-weight:700;padding:4px 10px;border-radius:6px;color:#fff}
+.bg-critical{background:var(--critical)}
+.bg-high{background:var(--high)}
+.bg-medium{background:#f9a825}
+.bg-low{background:var(--low)}
+.law-badge{display:inline-block;background:#e8eaf6;color:#3949ab;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;margin-top:4px}
+.improve-list{list-style:none;padding:0}
+.improve-list li{font-size:13px;color:var(--text);padding:5px 0 5px 20px;position:relative;line-height:1.6;border-bottom:1px solid #f5f5f5}
+.improve-list li:last-child{border-bottom:none}
+.improve-list li::before{content:'→';position:absolute;left:0;color:var(--blue);font-weight:700}
+.toggle-arrow{font-size:18px;color:var(--sub);flex-shrink:0;transition:transform .2s}
+.toggle-arrow.open{transform:rotate(180deg)}
+
+/* Photo thumb in result */
+.photo-wrap img.result-photo{max-height:380px;max-width:100%;width:auto;height:auto;object-fit:contain;display:block}
+
+/* Photo hazard markers */
+.photo-wrap{position:relative;margin:0 auto 12px;border-radius:12px;overflow:hidden;line-height:0;max-height:380px;max-width:100%;width:fit-content;display:flex;justify-content:center;align-items:center;background-color:#eaeff4;box-shadow:0 4px 12px rgba(0,0,0,0.08);cursor:zoom-in}
+.photo-wrap img{max-height:380px;max-width:100%;width:auto;height:auto;display:block;border-radius:12px;object-fit:contain;margin:0}
+.marker-layer{position:absolute;inset:0;pointer-events:none}
+.hz-marker{position:absolute;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:auto;padding:0;line-height:1;transition:transform .15s}
+.hz-marker::before{content:'';position:absolute;inset:-4px;border-radius:50%}/* 터치 영역 44px+ 확보 */
+.hz-marker:hover{transform:translate(-50%,-50%) scale(1.15)}
+.hz-marker.focus{transform:translate(-50%,-50%) scale(1.3);z-index:5;box-shadow:0 0 0 4px rgba(255,255,255,.9),0 4px 14px rgba(0,0,0,.6)}
+.hz-marker.critical{background:var(--critical)}
+.hz-marker.high{background:var(--high)}
+.hz-marker.medium{background:#f9a825}
+.hz-marker.low{background:var(--low)}
+.hz-marker.critical::after,.hz-marker.high::after{content:'';position:absolute;inset:-2.5px;border-radius:50%;border:2.5px solid currentColor;animation:mk-pulse 1.6s ease-out infinite;pointer-events:none}
+.hz-marker.critical::after{color:var(--critical)}
+.hz-marker.high::after{color:var(--high)}
+@keyframes mk-pulse{0%{transform:scale(1);opacity:.85}100%{transform:scale(2.1);opacity:0}}
+.marker-hint{font-size:12px;color:var(--sub);margin:0 2px 12px;display:flex;align-items:center;gap:5px}
+.hc-num{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:50%;color:#fff;font-size:12px;font-weight:800;margin-right:6px;vertical-align:-3px}
+.hc-num.critical{background:var(--critical)}.hc-num.high{background:var(--high)}.hc-num.medium{background:#f9a825}.hc-num.low{background:var(--low)}
+.hazard-card.flash{animation:card-flash 1.4s ease}
+@keyframes card-flash{0%,60%{box-shadow:0 0 0 3px var(--blue),0 4px 16px rgba(21,101,192,.35)}100%{box-shadow:none}}
+
+/* No API key */
+.api-notice{background:#fff8e1;border:2px solid #ffe082;border-radius:14px;padding:20px;text-align:center}
+.api-notice .notice-icon{font-size:42px;margin-bottom:10px}
+.api-notice h3{font-size:16px;font-weight:700;color:#f57f17;margin-bottom:8px}
+.api-notice p{font-size:13px;color:#5d4037;line-height:1.7;margin-bottom:14px}
+
+/* History */
+.hist-card{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:5px solid #ccc;display:flex;gap:12px;align-items:flex-start}
+.hist-card.critical{border-left-color:var(--critical)}
+.hist-card.high{border-left-color:var(--high)}
+.hist-card.medium{border-left-color:#f9a825}
+.hist-card.low{border-left-color:var(--low)}
+.hist-thumb{width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#eee}
+.hist-info{flex:1;min-width:0}
+.hist-date{font-size:11px;color:var(--sub);margin-bottom:3px}
+.hist-scene{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-meta{font-size:12px;color:var(--sub)}
+.hist-actions{display:flex;gap:6px;margin-top:8px}
+.btn-xs{padding:5px 11px;font-size:12px;border-radius:6px;border:none;cursor:pointer;font-weight:600;color:#fff}
+.btn-view{background:var(--blue)}
+.btn-del{background:#ef5350}
+
+/* Stats */
+.stat-row{display:flex;gap:10px;margin-bottom:14px}
+.stat-box{flex:1;background:#fff;border-radius:12px;padding:14px 10px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.stat-num{font-size:28px;font-weight:800;color:var(--blue)}
+.stat-lbl{font-size:11px;color:var(--sub);margin-top:3px}
+.bar-item{margin-bottom:10px}
+.bar-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.bar-track{background:#eee;border-radius:5px;height:13px;overflow:hidden}
+.bar-fill{height:100%;border-radius:5px;transition:width .6s}
+
+/* Settings */
+.form-grp{margin-bottom:14px}
+.form-grp label{display:block;font-size:13px;font-weight:600;color:var(--sub);margin-bottom:5px}
+.form-grp input,.form-grp select{width:100%;padding:11px 12px;border:1.5px solid #dde;border-radius:8px;font-size:15px;background:#fafafa;color:var(--text);outline:none}
+.form-grp input:focus,.form-grp select:focus{border-color:var(--blue);background:#fff}
+.btn-save{width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-top:6px}
+.api-key-wrap{position:relative}
+.api-key-wrap input{padding-right:44px;font-family:monospace;font-size:13px}
+.eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--sub)}
+.api-hint{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6}
+.law-card{background:#fff8e1;border-radius:10px;padding:14px}
+.law-card h4{font-size:13px;font-weight:700;color:#f57f17;margin-bottom:8px}
+.law-card li{font-size:12px;color:#555;line-height:2.1;padding-left:4px}
+
+/* Modal */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;overflow-y:auto;padding:20px 16px 40px}
+.modal.open{display:block}
+.modal-inner{background:#fff;border-radius:16px;padding:20px;max-width:500px;margin:0 auto}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-hdr h3{font-size:17px;font-weight:700}
+.modal-close{background:none;border:none;font-size:26px;cursor:pointer;color:#aaa;line-height:1}
+
+/* Utility */
+.empty{text-align:center;padding:50px 20px;color:#b0bec5;font-size:14px}
+.tag{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;margin-right:4px}
+.mt8{margin-top:8px}
+.section-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;padding-left:4px}
+
+@media print{
+  .tab-nav,.hdr,.analyze-btn,.upload-zone,.btn-save,.modal-close,.hist-actions{display:none!important}
+  body{padding:0;background:#fff}
+  .page{display:block!important}
+  #page-analyze,.loading-overlay{display:none!important}
+  #page-history{display:block!important;padding:0}
+  .hist-card{break-inside:avoid}
+}
+
+/* ── 등급 분포 요약 칩 ── */
+.grade-summary{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.gs-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:14px;font-size:12px;font-weight:700;color:#fff}
+
+/* ── 개선방안 시급도 뱃지 ── */
+.term-badge{display:inline-block;min-width:42px;text-align:center;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:800;color:#fff;margin-right:7px;vertical-align:1px}
+.term-즉시{background:var(--critical)}
+.term-단기{background:var(--high)}
+.term-중기{background:var(--blue)}
+.term-none{background:#90a4ae}
+
+/* ── 카드 ↔ 사진 연결 ── */
+.locate-btn{display:inline-flex;align-items:center;gap:4px;background:var(--blue-light);color:var(--blue);border:1px solid #90caf9;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;margin-top:5px}
+.no-marker-badge{display:inline-flex;align-items:center;gap:4px;background:#eceff1;color:#546e7a;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;margin-top:5px}
+.hc-preview{font-size:12px;color:var(--blue);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── 모두 펼치기/접기 ── */
+.expand-toggle{background:none;border:1.5px solid #cfd8dc;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--sub);cursor:pointer}
+.section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-row .section-title{margin-bottom:0}
+
+/* ── 사진 라이트박스 ── */
+.photo-wrap{cursor:zoom-in}
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:900;align-items:center;justify-content:center;padding:14px;cursor:zoom-out}
+.lightbox.open{display:flex}
+.lightbox .lb-inner{position:relative;max-width:100%;max-height:100%;line-height:0}
+.lightbox img{max-width:100%;max-height:88vh;width:auto;height:auto;border-radius:8px}
+.lightbox .lb-inner img.result-photo{max-height:88vh;max-width:100%;width:auto;height:auto;object-fit:contain}
+.lightbox .marker-layer{pointer-events:none}
+.lightbox .hz-marker{pointer-events:none}
+.lb-hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:rgba(255,255,255,.75);font-size:13px;font-weight:600}
+
+/* ── 조치 완료 체크리스트 (기록 상세) ── */
+.imp-check{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:13px;line-height:1.6;cursor:pointer}
+.imp-check:last-child{border-bottom:none}
+.imp-check input{width:19px;height:19px;flex-shrink:0;margin-top:2px;cursor:pointer;accent-color:var(--low)}
+.imp-check.done .imp-txt{color:#9e9e9e;text-decoration:line-through}
+.done-rate{display:inline-block;background:#e8f5e9;color:var(--low);padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700}
+
+/* ── 작업 유형 빠른 선택 칩 ── */
+.work-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.chip-btn{background:#fff;border:1.5px solid #cfd8dc;border-radius:18px;padding:6px 13px;font-size:13px;font-weight:600;color:#455a64;cursor:pointer;transition:all .15s}
+.chip-btn.on{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* ── 안내·고지 문구 ── */
+.privacy-note{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:10px;padding:9px 11px;background:#f5f7fa;border-radius:8px;display:flex;gap:6px;align-items:flex-start}
+.disclaimer{background:#fffde7;border:1.5px solid #ffe082;border-radius:12px;padding:13px 14px;margin:14px 0;font-size:12.5px;color:#5d4037;line-height:1.7;display:flex;gap:8px;align-items:flex-start}
+.disclaimer b{color:#bf360c}
+.key-warning{background:#ffebee;border:1.5px solid #ef9a9a;border-radius:8px;padding:9px 11px;font-size:12px;color:#b71c1c;line-height:1.6;margin-top:8px}
+.btn-del-key{width:100%;padding:10px;background:#fff;color:var(--critical);border:1.5px solid var(--critical-border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px}
+
+/* ── 등급 산정 기준표 ── */
+.matrix-table{width:100%;border-collapse:collapse;font-size:11px;text-align:center;margin-top:8px}
+.matrix-table th,.matrix-table td{border:1px solid #e0e0e0;padding:5px 2px}
+.matrix-table th{background:#f5f7fa;color:var(--sub);font-weight:700}
+.mt-low{background:var(--low-bg);color:var(--low);font-weight:700}
+.mt-medium{background:var(--medium-bg);color:#b58900;font-weight:700}
+.mt-high{background:var(--high-bg);color:var(--high);font-weight:700}
+.mt-critical{background:var(--critical-bg);color:var(--critical);font-weight:700}
+.matrix-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;font-size:11.5px;color:var(--sub)}
+.matrix-legend span{display:inline-flex;align-items:center;gap:4px}
+.lg-dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+/* ── 통계 기간 필터 ── */
+.period-chips{display:flex;gap:8px;margin-bottom:12px}
+.period-chips .chip-btn{font-size:12px;padding:5px 13px}
+
+/* ── 보고서 출력 ── */
+#report-view{display:none}
+@media print{
+  body.print-report .app-wrap{display:none!important}
+  body.print-report .page,body.print-report .modal,body.print-report .tab-nav,body.print-report .hdr,body.print-report .loading-overlay{display:none!important}
+  body.print-report #page-history{display:none!important}
+  body.print-report #report-view{display:block!important;padding:24px}
+  #report-view .photo-wrap{cursor:default;max-width:540px;margin:0 auto 14px}
+  #report-view .hazard-card{break-inside:avoid;page-break-inside:avoid}
+  #report-view .hz-marker{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #report-view *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+.rp-head{border-bottom:3px solid var(--blue);padding-bottom:12px;margin-bottom:16px}
+.rp-head h1{font-size:21px;color:var(--blue-dark)}
+.rp-meta{font-size:12px;color:#555;margin-top:6px;line-height:1.8}
+.rp-sign{margin-top:26px;display:flex;justify-content:flex-end;gap:30px;font-size:13px}
+.rp-sign .sg{border:1px solid #ccc;padding:10px 14px;min-width:150px}
+.rp-sign .sg .sg-lbl{font-size:11px;color:#888;margin-bottom:18px}
+</style>
+</head>
+<body>
+<div class="app-wrap">
+
+<div class="hdr">
+  <div class="hdr-icon">🛡️</div>
+  <div class="hdr-text">
+    <h1>AI 안전보건 위험성 평가</h1>
+    <p id="hdr-sub">사진 한 장으로 현장 위험요소 자동 분석</p>
+  </div>
+</div>
+
+<!-- 로딩 오버레이 -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">
+    AI가 현장을 분석하고 있습니다<br>
+    <span class="loading-step" id="loading-step">사진을 업로드하는 중...</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     탭 1: 분석
+============================================================ -->
+<div class="page active" id="page-analyze">
+
+  <!-- API 키 없을 때 안내 -->
+  <div id="no-api-notice" style="display:none">
+    <div class="api-notice">
+      <div class="notice-icon">🔑</div>
+      <h3>시작하려면 설정이 필요합니다</h3>
+      <p>
+        <b>① 시연/테스트용</b> → 설정 탭에서 <b>데모 모드</b>를 켜면<br>API 키 없이 즉시 사용 가능합니다.<br><br>
+        <b>② 실제 AI 분석</b> → <b>Google AI Studio</b> 또는 <b>Anthropic Console</b>에서<br>무료 가입 후 API 키를 발급하세요.<br>(Google AI Studio는 무료 사용이 가능합니다)
+      </p>
+      <button class="analyze-btn" onclick="showPage('settings',document.querySelectorAll('.tab-btn')[3])" style="max-width:220px;margin:0 auto;font-size:14px;padding:12px;">
+        ⚙️ 설정으로 이동
+      </button>
+    </div>
+  </div>
+
+  <!-- 분석 폼 -->
+  <div id="analyze-form">
+    <!-- 사진 업로드 -->
+    <div class="card">
+      <div class="card-title">📸 현장 사진</div>
+      <div class="upload-zone" id="upload-zone" ondragover="onDrag(event)" ondrop="onDrop(event)">
+        <span class="upload-icon" id="upload-icon">📷</span>
+        <h3>현장 사진을 업로드하세요</h3>
+        <p>카메라 촬영 또는 갤러리에서 선택</p>
+        <input class="upload-input" type="file" id="photo-input-drag" accept="image/*" onchange="loadPhoto(this)">
+      </div>
+      <div class="upload-actions" id="upload-actions">
+        <label class="upload-btn btn-camera" for="photo-cam">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          카메라 촬영
+          <input type="file" id="photo-cam" accept="image/*" capture="environment" style="display:none" onchange="loadPhoto(this)">
+        </label>
+        <label class="upload-btn btn-gallery" for="photo-gal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          갤러리 선택
+          <input type="file" id="photo-gal" accept="image/*" style="display:none" onchange="loadPhoto(this)">
+        </label>
+      </div>
+      <p class="privacy-note"><span>🔒</span><span>사진은 분석을 위해 외부 AI 서버(Google 또는 Anthropic)로 전송됩니다. 작업자 얼굴 등 <b>개인 식별 정보가 포함되지 않도록</b> 촬영 각도에 유의해 주세요. 사진과 분석 기록은 이 기기의 브라우저에만 저장됩니다.</span></p>
+    </div>
+    <!-- 작업 설명 (선택) -->
+    <div class="card">
+      <div class="card-title">📝 작업 설명 <span style="font-weight:400;color:#aaa;font-size:11px;">(선택사항 — 입력 시 분석 정확도 향상)</span></div>
+      <div class="work-chips" id="work-chips">
+        <button type="button" class="chip-btn" onclick="toggleWorkChip(this)">고소작업</button>
+        <button type="button" class="chip-btn" onclick="toggleWorkChip(this)">용접·화기</button>
+        <button type="button" class="chip-btn" onclick="toggleWorkChip(this)">전기작업</button>
+        <button type="button" class="chip-btn" onclick="toggleWorkChip(this)">밀폐공간</button>
+        <button type="button" class="chip-btn" onclick="toggleWorkChip(this)">중량물 취급</button>
+        <button type="button" class="chip-btn" onclick="toggleWorkChip(this)">화학물질</button>
+        <button type="button" class="chip-btn" onclick="toggleWorkChip(this)">해체·철거</button>
+        <button type="button" class="chip-btn" onclick="toggleWorkChip(this)">지게차·차량</button>
+      </div>
+      <textarea class="desc-input" id="work-desc" placeholder="작업 내용을 간략히 입력하거나 위 작업 유형을 선택하세요.&#10;예: 3층 외벽 도장 작업 / 전기 배선 작업 / 용접 작업 등"></textarea>
+    </div>
+
+    <!-- 분석 버튼 -->
+    <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()" disabled>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      AI 위험성 분석 시작
+    </button>
+  </div>
+
+  <!-- 분석 결과 -->
+  <div id="analyze-result" style="display:none">
+    <div class="photo-wrap">
+      <img id="result-photo" class="result-photo" src="" alt="분석 사진">
+      <div class="marker-layer" id="marker-layer"></div>
+    </div>
+    <p class="marker-hint" id="marker-hint" style="display:none">👆 사진을 누르면 크게 볼 수 있고, 번호 마커를 누르면 상세 분석으로 이동합니다</p>
+    <div id="result-content"></div>
+    <div class="disclaimer">
+      <span>⚠️</span>
+      <span><b>본 분석은 AI 참고자료입니다.</b> 산업안전보건법 제36조에 따른 법정 위험성평가를 대체하지 않으며, 사진에 보이지 않는 위험은 누락될 수 있습니다. 반드시 안전관리자 등 전문가의 현장 확인을 거쳐 활용하십시오.</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="analyze-btn" onclick="resetAnalysis()" style="background:#546e7a;box-shadow:none;flex:1;font-size:14px;padding:13px;">
+        🔄 새로 분석
+      </button>
+      <button class="analyze-btn" onclick="saveResult()" id="save-btn" style="flex:1;font-size:14px;padding:13px;">
+        💾 저장
+      </button>
+      <button class="analyze-btn" onclick="printReport()" style="background:#fff;color:var(--blue);border:2px solid var(--blue);box-shadow:none;flex:1;font-size:14px;padding:13px;">
+        📄 보고서
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     탭 2: 기록
+============================================================ -->
+<div class="page" id="page-history">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <span class="section-title" style="margin:0;">저장된 평가 기록</span>
+    <button onclick="window.print()" style="background:none;border:1px solid #dde;padding:6px 12px;border-radius:8px;font-size:12px;color:var(--sub);cursor:pointer;">🖨 인쇄</button>
+  </div>
+  <div id="history-list"></div>
+</div>
+
+<!-- ============================================================
+     탭 3: 통계
+============================================================ -->
+<div class="page" id="page-stats">
+  <div class="period-chips">
+    <button type="button" class="chip-btn on" id="period-all" onclick="setStatsPeriod('all')">전체 기간</button>
+    <button type="button" class="chip-btn" id="period-30" onclick="setStatsPeriod('30')">최근 30일</button>
+  </div>
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num" id="s-total">0</div><div class="stat-lbl">전체 분석</div></div>
+    <div class="stat-box"><div class="stat-num" id="s-crit" style="color:var(--critical)">0</div><div class="stat-lbl">매우높음</div></div>
+    <div class="stat-box"><div class="stat-num" id="s-hazards" style="color:var(--high)">0</div><div class="stat-lbl">총 위험요소</div></div>
+  </div>
+  <div class="card"><div class="card-title">📊 위험 등급 분포</div><div id="stat-bars"></div></div>
+  <div class="card"><div class="card-title">📋 위험요인 유형별</div><div id="type-bars"></div></div>
+</div>
+
+<!-- ============================================================
+     탭 4: 설정
+============================================================ -->
+<div class="page" id="page-settings">
+  <!-- 데모 모드 배너 -->
+  <div id="demo-banner" style="display:none;background:linear-gradient(135deg,#e65100,#bf360c);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+    <span style="font-size:24px;">🎬</span>
+    <div>
+      <div style="font-weight:700;font-size:14px;">데모 모드 활성화됨</div>
+      <div style="font-size:12px;opacity:.85;margin-top:2px;">API 키 없이 시연 가능 · 실제 AI 분석은 API 키 입력 후 비활성화</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🎬 시연용 데모 모드</div>
+    <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:14px;margin-bottom:14px;">
+      <p style="font-size:13px;color:#5d4037;line-height:1.7;margin-bottom:10px;">
+        API 키 없이 앱의 모든 기능을 시연할 수 있습니다.<br>
+        사진을 업로드하면 <b>실제와 동일한 분석 결과</b>를 보여줍니다.<br>
+        (건설현장 → 기계공장 → 화학물질 순으로 3가지 시나리오 순환)
+      </p>
+      <label style="display:flex;align-items:center;gap:12px;cursor:pointer;font-size:15px;font-weight:700;">
+        <input type="checkbox" id="cfg-demo" style="width:22px;height:22px;cursor:pointer;" onchange="onDemoToggle(this)">
+        데모 모드 활성화 (API 키 불필요)
+      </label>
+    </div>
+    <div class="card-title" style="margin-top:4px;">🔑 실제 AI 분석 (API 키)</div>
+    <div class="form-grp">
+      <label>API 제공사 (API Provider)</label>
+      <select id="cfg-provider" onchange="onProviderChange()">
+        <option value="gemini">Gemini API (Google)</option>
+        <option value="anthropic">Anthropic API (Claude)</option>
+      </select>
+    </div>
+    <div class="form-grp">
+      <label id="api-key-label">Gemini API 키</label>
+      <div class="api-key-wrap">
+        <input type="password" id="cfg-apikey" placeholder="AIzaSy...">
+        <button class="eye-btn" onclick="toggleApiKey()">👁</button>
+      </div>
+      <p class="api-hint" id="api-key-hint">
+        • 발급: <b>aistudio.google.com</b> (Google AI Studio)에서 무료로 API 키를 발급할 수 있습니다.<br>
+        • API 키는 이 기기의 브라우저에만 저장됩니다.
+      </p>
+      <div class="key-warning">
+        🔐 <b>보안 안내:</b> API 키는 암호화 없이 이 브라우저에 저장됩니다. <b>공용·공유 PC에서는 키를 저장하지 마시고</b>, 사용 후에는 아래 버튼으로 키를 삭제하세요. 조직 단위 배포 시에는 키를 브라우저에 두지 않는 중계 서버(프록시) 방식을 권장합니다.
+      </div>
+      <button type="button" class="btn-del-key" onclick="deleteApiKey()">🗑 저장된 API 키 즉시 삭제</button>
+    </div>
+    <div class="form-grp">
+      <label>분석 모델</label>
+      <select id="cfg-model">
+        <!-- Dynamic content loaded via onProviderChange() -->
+      </select>
+    </div>
+    <button class="btn-save" onclick="saveSettings()">설정 저장</button>
+  </div>
+  <div class="card">
+    <div class="card-title">🏢 기관 정보</div>
+    <div class="form-grp"><label>회사/기관명</label><input type="text" id="cfg-company" placeholder="회사명"></div>
+    <div class="form-grp"><label>부서명</label><input type="text" id="cfg-dept" placeholder="부서명"></div>
+    <div class="form-grp"><label>안전보건 담당자</label><input type="text" id="cfg-manager" placeholder="담당자명"></div>
+    <button class="btn-save" onclick="saveSettings()">설정 저장</button>
+  </div>
+  <div class="card">
+    <div class="card-title">📐 위험성 등급 산정 기준</div>
+    <p style="font-size:12.5px;color:var(--sub);line-height:1.7;">위험 점수 = <b>빈도(1~5) × 강도(1~5)</b>로 계산하며, 점수 구간에 따라 4단계 등급이 정해집니다. 처음 평가를 접하는 분도 이 표 하나로 산정 원리를 이해할 수 있습니다.</p>
+    <table class="matrix-table">
+      <tr><th>빈도＼강도</th><th>1<br>경미</th><th>2<br>보통</th><th>3<br>심각</th><th>4<br>중대</th><th>5<br>치명</th></tr>
+      <tr><th>1 거의없음</th><td class="mt-low">1</td><td class="mt-low">2</td><td class="mt-low">3</td><td class="mt-low">4</td><td class="mt-medium">5</td></tr>
+      <tr><th>2 가끔</th><td class="mt-low">2</td><td class="mt-low">4</td><td class="mt-medium">6</td><td class="mt-medium">8</td><td class="mt-high">10</td></tr>
+      <tr><th>3 보통</th><td class="mt-low">3</td><td class="mt-medium">6</td><td class="mt-medium">9</td><td class="mt-high">12</td><td class="mt-high">15</td></tr>
+      <tr><th>4 자주</th><td class="mt-low">4</td><td class="mt-medium">8</td><td class="mt-high">12</td><td class="mt-high">16</td><td class="mt-critical">20</td></tr>
+      <tr><th>5 매우자주</th><td class="mt-medium">5</td><td class="mt-high">10</td><td class="mt-high">15</td><td class="mt-critical">20</td><td class="mt-critical">25</td></tr>
+    </table>
+    <div class="matrix-legend">
+      <span><span class="lg-dot" style="background:var(--low)"></span>1~4 낮음(유지)</span>
+      <span><span class="lg-dot" style="background:#f9a825"></span>5~9 보통(계획수립)</span>
+      <span><span class="lg-dot" style="background:var(--high)"></span>10~16 높음(단기개선)</span>
+      <span><span class="lg-dot" style="background:var(--critical)"></span>17~25 매우높음(즉시조치)</span>
+    </div>
+  </div>
+  <div class="law-card card">
+    <h4>⚖️ 적용 법령</h4>
+    <ul style="padding-left:16px;">
+      <li>산업안전보건법 제36조 (위험성 평가)</li>
+      <li>위험성평가에 관한 지침 (고용부 고시 2023-19호)</li>
+      <li>산업안전보건기준에 관한 규칙</li>
+      <li>중대재해처벌법 제4조 (안전보건 확보 의무)</li>
+      <li>산안법 제51조 (사업주의 작업중지)</li>
+      <li>산안법 제114조 (MSDS 작성·제공)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 하단 탭 -->
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="showPage('analyze',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>분석
+  </button>
+  <button class="tab-btn" onclick="showPage('history',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>기록
+  </button>
+  <button class="tab-btn" onclick="showPage('stats',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>통계
+  </button>
+  <button class="tab-btn" onclick="showPage('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>설정
+  </button>
+</nav>
+</div> <!-- /app-wrap -->
+
+<!-- 기록 상세 모달 -->
+<div class="modal" id="hist-modal">
+  <div class="modal-inner">
+    <div class="modal-hdr">
+      <h3>평가 상세</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- 사진 확대 라이트박스 -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <div class="lb-inner" id="lb-inner"></div>
+  <div class="lb-hint">화면을 누르면 닫힙니다</div>
+</div>
+
+<!-- 보고서 출력용 (인쇄 시에만 표시) -->
+<div id="report-view"></div>
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+let cfg    = JSON.parse(localStorage.getItem('safetyCfg')||'{}');
+let history = JSON.parse(localStorage.getItem('safetyHistory')||'[]');
+let currentPhotoB64 = null;   // resized base64 for API
+let currentPhotoThumb = null; // smaller thumbnail for storage
+let lastResult = null;        // last AI analysis result
+
+// ================================================================
+// AI ANALYSIS PROMPT
+// ================================================================
+const SYSTEM_PROMPT = `당신은 대한민국 공인 산업안전보건 전문가입니다. 현장 사진을 분석하여 산업안전보건법 기반 위험성 평가를 수행합니다.
+
+적용 법령: 산업안전보건법, 위험성평가지침(고용부고시2023-19호), 산업안전보건기준에관한규칙, 중대재해처벌법
+
+빈도(가능성): 1=거의없음 2=가끔 3=보통 4=자주 5=매우자주
+강도(중대성): 1=경미(응급처치) 2=보통(의료처치) 3=심각(휴업3일↑) 4=중대(장해) 5=치명(사망)
+위험등급: 1-4점=low 5-9점=medium 10-16점=high 17-25점=critical
+
+반드시 아래 JSON 형식으로만 응답하십시오. 마크다운이나 추가 텍스트 없이 순수 JSON만. 위험요인(hazards)은 중요도 순으로 최대 5개까지만 작성하십시오:
+{"scene":"현장상황요약(2-3문장)","hazards":[{"id":1,"type":"추락·낙하|기계·기구|전기|화재·폭발|화학적위험|물리적위험|인간공학적위험|기타","title":"위험요인명","description":"상세설명","location":{"x":숫자,"y":숫자},"frequency":숫자,"severity":숫자,"score":숫자,"grade":"low|medium|high|critical","law":"관련법령조항","improvements":[{"term":"즉시|단기|중기","action":"개선방안"}]}],"top_grade":"low|medium|high|critical","urgent":["즉시조치사항"]}
+
+improvements는 위험요인당 2~3개를 작성하며, term은 다음 기준으로 지정하십시오: "즉시"=작업중지·격리 등 오늘 안에 해야 할 조치, "단기"=1주일 이내 완료할 설비·보호구 조치, "중기"=1개월 이내 수립할 제도·교육·점검체계. 실무 경험이 부족한 안전관리 감독자도 그대로 실행할 수 있도록 구체적인 수치·기준을 포함해 작성하십시오.
+
+location은 사진 속 해당 위험요소의 중심 위치입니다. x는 좌측 끝 0 ~ 우측 끝 100, y는 상단 0 ~ 하단 100인 백분율 좌표(정수)로, 사진을 정밀히 관찰하여 가능한 정확하게 지정하십시오. 사진에서 위치를 특정할 수 없는 위험요인(예: 관리체계 미흡 등 비가시적 요인)은 "location":null로 지정하십시오.
+
+현장 사진이 아닌 경우: {"scene":"현장 사진을 인식하기 어렵습니다. 작업 현장 사진을 업로드해 주세요.","hazards":[],"top_grade":"low","urgent":[]}`;
+
+// ================================================================
+// PHOTO HANDLING
+// ================================================================
+function loadPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      // API용 (1024px 최대)
+      currentPhotoB64 = resizeImage(img, 1024, 1024, 0.88);
+      // 썸네일용 (300px)
+      currentPhotoThumb = resizeImage(img, 300, 300, 0.7);
+      renderUploadZone();
+      document.getElementById('analyze-btn').disabled = false;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function resizeImage(img, maxW, maxH, quality) {
+  const canvas = document.createElement('canvas');
+  let w = img.width, h = img.height;
+  if (w > maxW || h > maxH) {
+    const r = Math.min(maxW / w, maxH / h);
+    w = Math.round(w * r); h = Math.round(h * r);
+  }
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+function renderUploadZone() {
+  const zone = document.getElementById('upload-zone');
+  zone.innerHTML = '';
+  zone.classList.add('has-image');
+  const imgEl = document.createElement('img');
+  imgEl.src = currentPhotoB64;
+  imgEl.alt = '현장 사진';
+  zone.appendChild(imgEl);
+  const changeBtn = document.createElement('button');
+  changeBtn.className = 'change-photo';
+  changeBtn.textContent = '📷 변경';
+  changeBtn.onclick = e => { e.stopPropagation(); document.getElementById('photo-cam').click(); };
+  zone.appendChild(changeBtn);
+}
+
+function onDrag(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const fakeInput = { files: [file], value: '' };
+    loadPhoto(fakeInput);
+  }
+}
+
+// ================================================================
+// DEMO DATA (API 키 없이 시연 가능)
+// ================================================================
+const DEMO_SCENARIOS = [
+  {
+    scene: "건설 현장 내부 작업 환경으로, 비계 작업대 위에서 고소 작업이 진행 중입니다. 안전망 미설치 및 작업자 안전대 미착용 상태가 확인되며, 바닥에 건축 자재가 무질서하게 적재되어 있습니다.",
+    top_grade: "critical",
+    urgent: ["즉시 고소 작업 중지 및 작업자 하강 조치", "안전대 착용 확인 전 작업 재개 금지", "안전망 설치 완료 후 작업 재개"],
+    hazards: [
+      { id:1, type:"추락·낙하", title:"안전대 미착용 고소 작업", location:{x:50,y:22}, description:"높이 4m 이상 비계 위에서 안전대를 착용하지 않은 채 작업 중이며, 안전난간이 일부 구간에서 설치되지 않았습니다.", frequency:4, severity:5, score:20, grade:"critical", law:"산업안전보건기준에 관한 규칙 제42조, 제44조 (추락의 방지)", improvements:[{term:"즉시",action:"안전대 부착 설비(수직 구명줄) 즉시 설치"},{term:"단기",action:"작업 전 안전대 착용 여부 현장 관리자 확인 의무화"},{term:"단기",action:"안전난간 전 구간 설치 (높이 90cm 이상, 중간난간 포함)"}] },
+      { id:2, type:"추락·낙하", title:"자재 낙하 위험 구역 미설정", location:{x:68,y:48}, description:"상부 작업 구역 하부에 낙하물 방지망 및 출입금지 구역이 설정되어 있지 않아 하부 작업자의 낙하물 피해 위험이 있습니다.", frequency:3, severity:4, score:12, grade:"high", law:"산업안전보건기준에 관한 규칙 제14조 (낙하물에 의한 위험 방지)", improvements:[{term:"단기",action:"낙하물 방지망 설치 (10m 이내 1개소)"},{term:"즉시",action:"하부 작업 구역 출입금지 테이프 및 표지판 설치"},{term:"중기",action:"안전모 착용 전 현장 출입 금지 원칙 수립"}] },
+      { id:3, type:"기타", title:"통로 자재 무질서 적재", location:{x:30,y:80}, description:"작업 통로에 건축 자재가 무질서하게 적재되어 있어 이동 중 걸려 넘어지거나 자재가 쓰러지는 사고 위험이 있습니다.", frequency:4, severity:2, score:8, grade:"medium", law:"산업안전보건기준에 관한 규칙 제23조 (통로의 설치)", improvements:[{term:"즉시",action:"통로 폭 최소 1m 이상 확보 후 자재 정리"},{term:"단기",action:"자재 적재 구역 바닥 표시(황색 라인) 설치"},{term:"중기",action:"일일 작업 종료 전 통로 정리 점검 의무화"}] }
+    ]
+  },
+  {
+    scene: "공장 내 기계 작업 구역으로, 프레스 및 절단 기계가 가동 중입니다. 방호장치 일부가 제거된 상태이며 작업자가 보호장갑 없이 작업하고 있고, 전기 배선 일부가 노출되어 있습니다.",
+    top_grade: "critical",
+    urgent: ["방호장치 제거된 기계 즉시 가동 중지", "노출 전기 배선 절연 처리 전 해당 설비 사용 금지"],
+    hazards: [
+      { id:1, type:"기계·기구", title:"프레스 방호장치 임의 제거", location:{x:42,y:45}, description:"프레스 기계의 양수조작식 방호장치가 임의로 제거된 상태로 가동 중이며, 이는 손가락 절단 등 중대한 신체 손상 사고 위험이 있습니다.", frequency:3, severity:5, score:15, grade:"high", law:"산업안전보건기준에 관한 규칙 제87조, 제105조 (프레스의 방호장치)", improvements:[{term:"즉시",action:"방호장치 즉시 복구 후 가동"},{term:"중기",action:"방호장치 임의 해제 금지 규정 및 패널티 수립"},{term:"중기",action:"정기적인 방호장치 작동 상태 점검표 운용"}] },
+      { id:2, type:"전기", title:"전기 배선 절연 피복 손상", location:{x:75,y:62}, description:"기계 후면 전기 배선의 절연 피복이 벗겨져 도체가 노출되어 있어 감전 및 전기 화재 위험이 높습니다.", frequency:3, severity:4, score:12, grade:"high", law:"산업안전보건기준에 관한 규칙 제301조, 제302조 (전기 기계·기구의 접지)", improvements:[{term:"즉시",action:"노출 배선 즉시 절연 테이프 처리 또는 배선 교체"},{term:"중기",action:"전기설비 전담 점검자 주 1회 순찰 점검"},{term:"중기",action:"전기 설비 안전 점검표 도입"}] },
+      { id:3, type:"기계·기구", title:"보호장갑 미착용 절삭 작업", location:{x:55,y:55}, description:"회전하는 절단 기계 인근에서 작업자가 보호장갑을 착용하지 않고 작업 중으로, 손 및 손가락 부상 위험이 있습니다.", frequency:4, severity:3, score:12, grade:"high", law:"산업안전보건기준에 관한 규칙 제32조 (보호구의 지급 등)", improvements:[{term:"즉시",action:"절삭 작업용 방진 보호장갑 지급 및 착용 의무화"},{term:"단기",action:"작업 시작 전 보호구 착용 현황 점검 체크리스트 운용"},{term:"단기",action:"보호구 미착용 작업 금지 표지판 부착"}] },
+      { id:4, type:"물리적 위험", title:"소음 발생 구역 청력보호구 미착용", location:{x:25,y:35}, description:"85dB 이상으로 추정되는 기계 소음 발생 구역에서 근로자가 청력 보호구 없이 장시간 노출되어 있습니다.", frequency:5, severity:2, score:10, grade:"high", law:"산업안전보건기준에 관한 규칙 제513조~517조 (소음작업 관리)", improvements:[{term:"즉시",action:"귀마개 또는 귀덮개 즉시 지급"},{term:"중기",action:"소음 측정 후 85dB 초과 시 특수건강진단 실시"},{term:"중기",action:"소음 저감 방음 커버 설치 검토"}] }
+    ]
+  },
+  {
+    scene: "화학물질 취급 작업 구역으로, 유기용제를 사용한 세척 작업이 진행 중입니다. 환기 설비가 작동하지 않는 밀폐 공간이며, 일부 화학물질 용기의 라벨이 손상되어 있습니다.",
+    top_grade: "critical",
+    urgent: ["밀폐 공간 즉시 환기 후 작업 재개","방독마스크 착용 전 작업 금지","MSDS 미게시 화학물질 식별 및 조치"],
+    hazards: [
+      { id:1, type:"화학적 위험", title:"밀폐 공간 유기용제 취급 (환기 불량)", location:{x:48,y:42}, description:"환기 설비가 작동하지 않는 밀폐 작업 공간에서 유기용제(톨루엔 추정)를 사용 중이며, 유해 증기 흡입 및 폭발 위험이 매우 높습니다.", frequency:3, severity:5, score:15, grade:"high", law:"산업안전보건법 제114조 (MSDS), 안전보건규칙 제429조 (국소배기장치)", improvements:[{term:"즉시",action:"즉시 환기 실시 후 작업 재개 (전체 환기 + 국소배기)"},{term:"즉시",action:"방독마스크(유기화합물용 정화통) 착용 의무화"},{term:"중기",action:"유기용제 취급 작업 허가제(Permit-to-Work) 도입"}] },
+      { id:2, type:"화학적 위험", title:"화학물질 MSDS 미게시 및 라벨 손상", location:{x:25,y:60}, description:"작업 구역 내 화학물질 용기의 라벨이 손상되거나 탈락되어 있으며, MSDS(물질안전보건자료)가 작업장에 게시되지 않았습니다.", frequency:3, severity:3, score:9, grade:"medium", law:"산업안전보건법 제114조, 제115조 (MSDS 작성·게시 의무)", improvements:[{term:"즉시",action:"화학물질 용기 라벨 즉시 재부착 (한국어 표기 필수)"},{term:"단기",action:"MSDS 최신본 작업장 내 게시 (QR코드 병행 권장)"},{term:"중기",action:"화학물질 관리대장 작성 및 보관"}] },
+      { id:3, type:"화재·폭발", title:"가연성 유기용제 주변 점화원 관리 미흡", location:{x:72,y:70}, description:"가연성 유기용제 사용 구역 인근에 콘센트가 노출되어 있고 소화기가 비치되지 않아 화재·폭발 위험이 있습니다.", frequency:2, severity:5, score:10, grade:"high", law:"산업안전보건기준에 관한 규칙 제232조 (폭발 위험 장소의 전기 설비)", improvements:[{term:"단기",action:"인화성 물질 취급 구역 내 방폭형 전기 설비 설치"},{term:"즉시",action:"소화기 (ABC 분말) 5m 이내 비치"},{term:"중기",action:"화기 작업 허가서(Hot Work Permit) 제도 운영"}] }
+    ]
+  }
+];
+let demoIndex = 0;
+
+// ================================================================
+// JSON 추출 헬퍼: 첫 '{'부터 중괄호 균형을 추적하여 안전하게 파싱
+// (문자열 리터럴 내부의 중괄호·이스케이프 문자를 올바르게 건너뜀)
+// ================================================================
+function extractJson(text) {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (esc) { esc = false; continue; }
+    if (ch === '\\' && inStr) { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(text.slice(start, i + 1)); }
+        catch { return null; }
+      }
+    }
+  }
+  return null; // 닫는 중괄호 미도달 = 잘린 응답
+}
+
+// ================================================================
+// AI 응답 검증·정규화 (시큐어코딩: 외부 입력 화이트리스트 검증)
+// ================================================================
+const VALID_GRADES = ['low','medium','high','critical'];
+const VALID_TERMS  = ['즉시','단기','중기'];
+
+function gradeFromScore(score) {
+  if (score >= 17) return 'critical';
+  if (score >= 10) return 'high';
+  if (score >= 5)  return 'medium';
+  return 'low';
+}
+function clampInt(v, min, max, fallback) {
+  const n = Math.round(Number(v));
+  return (isFinite(n) && n >= min && n <= max) ? n : fallback;
+}
+// 문자열(구버전)·객체(신버전) improvements를 모두 {term, action}으로 통일
+function normImprovement(m) {
+  if (typeof m === 'string') return { term: '', action: m };
+  if (m && typeof m === 'object') {
+    return {
+      term: VALID_TERMS.includes(m.term) ? m.term : '',
+      action: typeof m.action === 'string' ? m.action : String(m.action ?? '')
+    };
+  }
+  return { term: '', action: String(m ?? '') };
+}
+function sanitizeResult(parsed) {
+  if (!parsed || typeof parsed !== 'object') parsed = {};
+  parsed.scene  = typeof parsed.scene === 'string' ? parsed.scene : '';
+  parsed.urgent = Array.isArray(parsed.urgent) ? parsed.urgent.map(u => String(u ?? '')) : [];
+  parsed.hazards = (Array.isArray(parsed.hazards) ? parsed.hazards : []).map(h => {
+    h = (h && typeof h === 'object') ? h : {};
+    const frequency = clampInt(h.frequency, 1, 5, 1);
+    const severity  = clampInt(h.severity, 1, 5, 1);
+    const score     = frequency * severity; // AI 점수를 신뢰하지 않고 항상 재계산
+    const grade     = gradeFromScore(score); // 점수↔등급 불일치 방지
+    let loc = null;
+    if (h.location && typeof h.location === 'object'
+        && isFinite(Number(h.location.x)) && isFinite(Number(h.location.y))) {
+      loc = { x: Math.min(100, Math.max(0, Number(h.location.x))),
+              y: Math.min(100, Math.max(0, Number(h.location.y))) };
+    }
+    return {
+      type: typeof h.type === 'string' ? h.type : '기타',
+      title: typeof h.title === 'string' ? h.title : '위험요인',
+      description: typeof h.description === 'string' ? h.description : '',
+      law: typeof h.law === 'string' ? h.law : '',
+      location: loc, frequency, severity, score, grade,
+      improvements: (Array.isArray(h.improvements) ? h.improvements : []).map(normImprovement)
+    };
+  });
+  // top_grade는 AI 값 대신 항상 재계산된 최고 등급 사용 (불일치 방지)
+  const maxScore = parsed.hazards.reduce((m,h) => Math.max(m, h.score), 0);
+  parsed.top_grade = parsed.hazards.length ? gradeFromScore(maxScore) : 'low';
+  return parsed;
+}
+
+// ================================================================
+// ANALYSIS
+// ================================================================
+async function startAnalysis() {
+  const apiKey = cfg.apiKey;
+  const isDemo = cfg.demoMode;
+  if (!isDemo && !apiKey) { alert('설정 탭에서 API 키를 먼저 입력해 주세요.\n\n▶ 시연용 데모 모드는 설정 탭에서 활성화할 수 있습니다.'); return; }
+  if (!currentPhotoB64) { alert('사진을 먼저 업로드해 주세요.'); return; }
+
+  showLoading(true, '사진을 분석하는 중...');
+  await tick();
+
+  // ── 데모 모드 ──────────────────────────────
+  if (isDemo) {
+    setLoadingStep('AI가 위험요소를 식별하는 중...');
+    await new Promise(r => setTimeout(r, 900));
+    setLoadingStep('법령 기준으로 등급을 산정하는 중...');
+    await new Promise(r => setTimeout(r, 700));
+    setLoadingStep('개선 방향을 생성하는 중...');
+    await new Promise(r => setTimeout(r, 600));
+    const demo = DEMO_SCENARIOS[demoIndex % DEMO_SCENARIOS.length];
+    demoIndex++;
+    lastResult = demo;
+    showLoading(false);
+    renderResult(demo);
+    return;
+  }
+  // ───────────────────────────────────────────
+
+  const desc = document.getElementById('work-desc').value.trim();
+  const userText = desc
+    ? `현장 사진을 분석하고 위험성 평가를 수행해 주세요.\n\n작업 설명: ${desc}`
+    : '현장 사진을 분석하고 모든 유해·위험요인에 대한 위험성 평가를 수행해 주세요.';
+
+  const b64data = currentPhotoB64.replace(/^data:image\/jpeg;base64,/, '');
+
+  try {
+    setLoadingStep('AI에 전송 중...');
+    let raw = '';
+    const provider = cfg.provider || 'gemini';
+
+    if (provider === 'gemini') {
+      const modelName = cfg.model || 'gemini-2.5-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              {
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: b64data
+                }
+              },
+              {
+                text: userText
+              }
+            ]
+          }],
+          systemInstruction: {
+            parts: [{
+              text: SYSTEM_PROMPT
+            }]
+          },
+          generationConfig: {
+            responseMimeType: 'application/json'
+          }
+        })
+      });
+
+      setLoadingStep('결과를 처리하는 중...');
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || `Gemini API 오류 (${response.status})`);
+      }
+
+      const resJson = await response.json();
+      raw = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    } else {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: cfg.model || 'claude-3-5-sonnet-20241022',
+          max_tokens: 4096,
+          system: SYSTEM_PROMPT,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64data } },
+              { type: 'text', text: userText }
+            ]
+          }]
+        })
+      });
+
+      setLoadingStep('결과를 처리하는 중...');
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `Claude API 오류 (${res.status})`);
+      }
+
+      const data = await res.json();
+      const textBlocks = (data.content || []).filter(b => b.type === 'text');
+      raw = textBlocks.map(b => b.text).join('\n').trim();
+
+      if (data.stop_reason === 'max_tokens') {
+        console.error('[AI 응답 잘림] stop_reason=max_tokens. 원본:', raw);
+        throw new Error('AI 응답이 길이 제한으로 잘렸습니다. 다시 시도해 주세요.');
+      }
+    }
+
+    if (!raw) {
+      console.error('[AI 응답 오류] 텍스트 블록 없음. 전체 응답:', data);
+      throw new Error('AI 응답에 텍스트가 없습니다. 다시 시도해 주세요.');
+    }
+
+    // max_tokens 도달로 JSON이 중간에 잘린 경우
+    if (data.stop_reason === 'max_tokens') {
+      console.error('[AI 응답 잘림] stop_reason=max_tokens. 원본:', raw);
+      throw new Error('AI 응답이 길이 제한으로 잘렸습니다. 다시 시도해 주세요.');
+    }
+
+    let parsed;
+    try {
+      // 마크다운 코드 블록 제거 (```json ... ``` 형태 처리)
+      let cleaned = raw.replace(/^[\s\S]*?```(?:json)?\s*/i, m => m.includes('{') ? m : '')
+                       .replace(/```[\s\S]*$/i, '').trim();
+      if (!cleaned.includes('{')) cleaned = raw;
+      // 첫 '{'부터 균형 잡힌 중괄호 블록 추출 (문자열 내 중괄호/이스케이프 처리)
+      parsed = extractJson(cleaned) ?? extractJson(raw);
+      if (!parsed) throw new Error('no json');
+    } catch {
+      console.error('[AI 파싱 오류] 원본 응답:', raw);
+      throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해 주세요.');
+    }
+
+    // 필수 필드 검증 및 기본값 보정 + 값 정규화 (grade 화이트리스트, 점수 재계산)
+    parsed = sanitizeResult(parsed);
+
+    lastResult = parsed;
+    showLoading(false);
+    renderResult(parsed);
+
+  } catch (e) {
+    showLoading(false);
+    alert('분석 오류: ' + e.message);
+  }
+}
+
+// ================================================================
+// RENDER RESULT
+// ================================================================
+const TYPE_ICON = {
+  '추락·낙하':'⬇️','기계·기구':'⚙️','전기':'⚡','화재·폭발':'🔥',
+  '화학적위험':'☣️','화학적 위험':'☣️','물리적위험':'📢','물리적 위험':'📢',
+  '인간공학적위험':'🦴','인간공학적 위험':'🦴','기타':'⚠️'
+};
+const GRADE_LABEL = {low:'낮음',medium:'보통',high:'높음',critical:'매우 높음'};
+const GRADE_EMOJI = {low:'🟢',medium:'🟡',high:'🟠',critical:'🔴'};
+const FREQ_LBL = ['','거의 없음','가끔','보통','자주','매우 자주'];
+const SEV_LBL  = ['','경미','보통','심각','중대','치명'];
+
+function renderResult(data) {
+  allExpanded = false;
+  document.getElementById('result-photo').src = currentPhotoB64;
+  document.querySelector('#analyze-result .photo-wrap').onclick = openLightbox;
+  document.getElementById('analyze-form').style.display = 'none';
+  document.getElementById('analyze-result').style.display = 'block';
+
+  const hazards = (data.hazards || []).sort((a,b) => b.score - a.score);
+
+  // ── 사진 위 위험요소 마커 렌더링 (겹침 시 자동 오프셋) ──
+  const pos = [];
+  hazards.forEach((h, i) => {
+    const loc = h.location;
+    if (!loc || typeof loc.x !== 'number' || typeof loc.y !== 'number'
+        || !isFinite(loc.x) || !isFinite(loc.y)) { pos[i] = null; return; }
+    let x = Math.min(96, Math.max(4, loc.x));
+    let y = Math.min(95, Math.max(5, loc.y));
+    // 이미 배치된 마커와 가까우면 아래로 비켜 배치
+    for (let guard = 0; guard < 6; guard++) {
+      const clash = pos.some(p => p && Math.abs(p.x - x) < 9 && Math.abs(p.y - y) < 9);
+      if (!clash) break;
+      y = Math.min(95, y + 10);
+      if (y >= 95) { x = Math.min(96, x + 10); y = Math.max(5, loc.y); }
+    }
+    pos[i] = { x, y };
+  });
+  const layer = document.getElementById('marker-layer');
+  layer.innerHTML = hazards.map((h, i) => {
+    if (!pos[i]) return '';
+    return `<button type="button" class="hz-marker ${h.grade}" id="marker-${i}" style="left:${pos[i].x}%;top:${pos[i].y}%"
+      onclick="event.stopPropagation();focusHazard(${i})" aria-label="위험요소 ${i+1}: ${esc(h.title)}">${i+1}</button>`;
+  }).join('');
+  document.getElementById('marker-hint').style.display = layer.children.length ? 'flex' : 'none';
+
+  const topGrade = data.top_grade || 'low';
+  const gradeInfo = {
+    critical:{emoji:'🚨',label:'매우 높음 — 즉시 조치 필요'},
+    high:{emoji:'⚠️',label:'높음 — 단기 개선 필요'},
+    medium:{emoji:'🔔',label:'보통 — 개선 계획 수립'},
+    low:{emoji:'✅',label:'낮음 — 현 수준 유지'}
+  }[topGrade];
+
+  // 등급별 건수 요약
+  const gcnt = {critical:0,high:0,medium:0,low:0};
+  hazards.forEach(h => gcnt[h.grade]++);
+  const gsChips = VALID_GRADES.slice().reverse()
+    .filter(g => gcnt[g] > 0)
+    .map(g => `<span class="gs-chip bg-${g}">${GRADE_EMOJI[g]} ${GRADE_LABEL[g]} ${gcnt[g]}건</span>`)
+    .join('');
+
+  let html = '';
+
+  // 전체 등급 헤더 (한눈에 보는 등급 분포 포함)
+  html += `<div class="result-header ${topGrade}">
+    <div class="result-icon">${gradeInfo.emoji}</div>
+    <div class="result-info">
+      <span class="grade-chip chip-${topGrade}">${GRADE_EMOJI[topGrade]} ${GRADE_LABEL[topGrade]}</span>
+      <h2>${gradeInfo.label}</h2>
+      <p>위험요소 <b>${hazards.length}건</b> 발견 &nbsp;·&nbsp; ${new Date().toLocaleDateString('ko-KR')}</p>
+      <div class="grade-summary">${gsChips}</div>
+    </div>
+  </div>`;
+
+  // 즉시 조치
+  if (data.urgent && data.urgent.length > 0) {
+    html += `<div class="urgent-box">
+      <h4>🚨 즉시 조치 필요</h4>
+      <ul>${data.urgent.map(u=>`<li>${esc(u)}</li>`).join('')}</ul>
+    </div>`;
+  }
+
+  // 현장 설명
+  if (data.scene) {
+    html += `<div class="scene-box"><p>📍 ${esc(data.scene)}</p></div>`;
+  }
+
+  // 위험요소 없는 경우
+  if (!hazards.length) {
+    html += '<div class="card" style="text-align:center;padding:24px;"><div style="font-size:36px;margin-bottom:8px;">✅</div><p>사진에서 명확한 위험요소가 발견되지 않았습니다.</p></div>';
+  }
+
+  // 위험요소 카드 (기본 접힘 + 핵심 개선방안 미리보기 → '한눈에' 파악)
+  if (hazards.length) {
+    html += `<div class="section-row">
+      <div class="section-title">${hazards.length}건의 위험요소</div>
+      <button type="button" class="expand-toggle" id="expand-all-btn" onclick="toggleAllHazards()">모두 펼치기 ▾</button>
+    </div>`;
+    hazards.forEach((h, i) => {
+      const icon = TYPE_ICON[h.type] || '⚠️';
+      const firstImp = (h.improvements && h.improvements[0]) ? h.improvements[0].action : '';
+      const locBtn = pos[i]
+        ? `<button type="button" class="locate-btn" onclick="event.stopPropagation();locateMarker(${i})">📍 사진에서 보기</button>`
+        : `<span class="no-marker-badge">📋 사진에 표시되지 않는 위험 (관리적 요인)</span>`;
+      html += `<div class="hazard-card ${h.grade}" id="hcard-${i}">
+        <div class="hc-head ${h.grade}" onclick="toggleHazard(${i})">
+          <div class="hc-icon">${icon}</div>
+          <div class="hc-info">
+            <div class="hc-title"><span class="hc-num ${h.grade}">${i+1}</span>${esc(h.title)}</div>
+            <div class="hc-type">${esc(h.type)}</div>
+            <div class="hc-preview" id="hprev-${i}">${firstImp ? '→ ' + esc(firstImp) : ''}</div>
+          </div>
+          <div class="hc-score">
+            <div class="score-num ${h.grade}">${h.score}</div>
+            <div class="score-label">위험 점수</div>
+          </div>
+          <div class="toggle-arrow" id="arr-${i}">▾</div>
+        </div>
+        <div class="hc-body" id="hbody-${i}">
+          <div class="hc-detail-row">
+            <div class="hk">위험요인 설명</div>
+            <div class="hv">${esc(h.description)}</div>
+            ${locBtn}
+          </div>
+          <div class="hc-detail-row">
+            <div class="hk">위험성 점수 산정</div>
+            <div class="score-matrix">
+              <div class="matrix-cell"><div class="matrix-num">${h.frequency}</div><div class="matrix-lbl">빈도<br>${FREQ_LBL[h.frequency]||''}</div></div>
+              <div class="matrix-x">×</div>
+              <div class="matrix-cell"><div class="matrix-num">${h.severity}</div><div class="matrix-lbl">강도<br>${SEV_LBL[h.severity]||''}</div></div>
+              <div class="matrix-x">=</div>
+              <div class="matrix-cell"><div class="matrix-result bg-${h.grade}">${h.score}점<br>${GRADE_LABEL[h.grade]}</div></div>
+            </div>
+            <p style="font-size:11px;color:var(--sub);margin-top:6px;">📐 산정 기준표는 <b>설정 탭</b>에서 확인할 수 있습니다</p>
+          </div>
+          <div class="hc-detail-row">
+            <div class="hk">관련 법령</div>
+            <div class="law-badge">⚖️ ${esc(h.law)}</div>
+          </div>
+          <div class="hc-detail-row">
+            <div class="hk">개선 방향 (시급도순)</div>
+            <ul class="improve-list">${renderImprovements(h.improvements)}</ul>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+
+  document.getElementById('result-content').innerHTML = html;
+}
+
+// 개선방안 렌더링: 시급도 뱃지 + 즉시→단기→중기 정렬 (구버전 문자열도 지원)
+const TERM_ORDER = {'즉시':0,'단기':1,'중기':2,'':3};
+function renderImprovements(list) {
+  const items = (list || []).map(normImprovement)
+    .sort((a,b) => (TERM_ORDER[a.term]??3) - (TERM_ORDER[b.term]??3));
+  return items.map(m => {
+    const badge = m.term
+      ? `<span class="term-badge term-${m.term}">${m.term}</span>`
+      : '';
+    return `<li>${badge}${esc(m.action)}</li>`;
+  }).join('');
+}
+
+// 모두 펼치기 / 접기
+let allExpanded = false;
+function toggleAllHazards() {
+  allExpanded = !allExpanded;
+  document.querySelectorAll('#result-content .hc-body').forEach(b => b.classList.toggle('open', allExpanded));
+  document.querySelectorAll('#result-content .toggle-arrow').forEach(a => a.classList.toggle('open', allExpanded));
+  document.querySelectorAll('#result-content .hc-preview').forEach(p => p.style.display = allExpanded ? 'none' : '');
+  const btn = document.getElementById('expand-all-btn');
+  if (btn) btn.textContent = allExpanded ? '모두 접기 ▴' : '모두 펼치기 ▾';
+}
+
+function toggleHazard(i) {
+  const body = document.getElementById(`hbody-${i}`);
+  const arr  = document.getElementById(`arr-${i}`);
+  const prev = document.getElementById(`hprev-${i}`);
+  body.classList.toggle('open');
+  if (arr)  arr.classList.toggle('open');
+  if (prev) prev.style.display = body.classList.contains('open') ? 'none' : '';
+}
+
+// 사진 마커 클릭 → 해당 위험요소 카드로 이동 + 펼침 + 하이라이트
+function focusHazard(i) {
+  const body = document.getElementById(`hbody-${i}`);
+  const arr  = document.getElementById(`arr-${i}`);
+  const prev = document.getElementById(`hprev-${i}`);
+  const card = document.getElementById(`hcard-${i}`);
+  if (!card) return;
+  if (body) body.classList.add('open');
+  if (arr)  arr.classList.add('open');
+  if (prev) prev.style.display = 'none';
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.classList.remove('flash');
+  void card.offsetWidth; // 애니메이션 재시작
+  card.classList.add('flash');
+}
+
+// 카드의 '사진에서 보기' → 사진으로 스크롤 + 해당 마커 강조 (역방향 연결)
+function locateMarker(i) {
+  const marker = document.getElementById(`marker-${i}`);
+  if (!marker) return;
+  document.querySelector('#analyze-result .photo-wrap')
+    .scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.querySelectorAll('#marker-layer .hz-marker').forEach(m => m.classList.remove('focus'));
+  marker.classList.add('focus');
+  setTimeout(() => marker.classList.remove('focus'), 2500);
+}
+
+// 사진 탭 → 전체화면 확대 (마커 포함)
+function openLightbox() {
+  const wrap = document.querySelector('#analyze-result .photo-wrap');
+  if (!wrap || !currentPhotoB64) return;
+  document.getElementById('lb-inner').innerHTML = wrap.innerHTML;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lb-inner').innerHTML = '';
+}
+
+// 작업 유형 칩 → 작업 설명에 자동 반영
+function toggleWorkChip(btn) {
+  btn.classList.toggle('on');
+  const selected = [...document.querySelectorAll('#work-chips .chip-btn.on')].map(b => b.textContent);
+  const desc = document.getElementById('work-desc');
+  // 칩으로 입력된 부분만 갱신하고 직접 입력한 내용은 보존
+  const manual = desc.value.replace(/^\[작업유형\][^\n]*\n?/, '');
+  desc.value = (selected.length ? `[작업유형] ${selected.join(', ')}\n` : '') + manual;
+}
+
+function resetAnalysis() {
+  currentPhotoB64 = null;
+  currentPhotoThumb = null;
+  lastResult = null;
+  document.getElementById('analyze-form').style.display = 'block';
+  document.getElementById('analyze-result').style.display = 'none';
+  document.getElementById('work-desc').value = '';
+  document.getElementById('analyze-btn').disabled = true;
+  const zone = document.getElementById('upload-zone');
+  zone.classList.remove('has-image');
+  zone.innerHTML = `
+    <span class="upload-icon" id="upload-icon">📷</span>
+    <h3>현장 사진을 업로드하세요</h3>
+    <p>카메라 촬영 또는 갤러리에서 선택</p>
+    <input class="upload-input" type="file" id="photo-input-drag" accept="image/*" onchange="loadPhoto(this)">`;
+}
+
+// ================================================================
+// SAVE
+// ================================================================
+function saveResult() {
+  if (!lastResult) return;
+  const record = {
+    id: Date.now().toString(),
+    date: new Date().toLocaleDateString('ko-KR'),
+    ts: Date.now(),
+    scene: lastResult.scene,
+    top_grade: lastResult.top_grade,
+    hazard_count: (lastResult.hazards||[]).length,
+    hazards: lastResult.hazards,
+    urgent: lastResult.urgent,
+    thumb: currentPhotoThumb,
+    desc: document.getElementById('work-desc').value.trim(),
+    done: {} // 개선방안 조치완료 체크 상태 ("위험idx-방안idx": true)
+  };
+  history.unshift(record);
+  if (history.length > 200) history = history.slice(0, 200);
+  localStorage.setItem('safetyHistory', JSON.stringify(history));
+  document.getElementById('save-btn').textContent = '✅ 저장 완료';
+  document.getElementById('save-btn').disabled = true;
+  setTimeout(() => {
+    document.getElementById('save-btn').textContent = '💾 저장';
+    document.getElementById('save-btn').disabled = false;
+  }, 2000);
+}
+
+// ================================================================
+// HISTORY
+// ================================================================
+function renderHistory() {
+  const container = document.getElementById('history-list');
+  if (!history.length) { container.innerHTML = '<div class="empty">저장된 평가 기록이 없습니다.</div>'; return; }
+  container.innerHTML = history.map(r => {
+    const totalImps = (r.hazards||[]).reduce((s,h)=>s+((h.improvements||[]).length),0);
+    const doneCnt = Object.values(r.done||{}).filter(Boolean).length;
+    const rate = totalImps ? `<span class="done-rate">✓ 조치 ${doneCnt}/${totalImps}</span>` : '';
+    return `
+    <div class="hist-card ${r.top_grade}">
+      ${r.thumb ? `<img class="hist-thumb" src="${r.thumb}" alt="현장">` : '<div class="hist-thumb"></div>'}
+      <div class="hist-info">
+        <div class="hist-date">${r.date}</div>
+        <div class="hist-scene">${esc(r.scene||'현장 분석')}</div>
+        <div class="hist-meta">
+          <span class="grade-chip chip-${r.top_grade}" style="font-size:11px;padding:2px 9px;">${GRADE_EMOJI[r.top_grade]} ${GRADE_LABEL[r.top_grade]}</span>
+          위험요소 ${r.hazard_count}건 ${rate}
+        </div>
+        <div class="hist-actions">
+          <button class="btn-xs btn-view" onclick="openHistDetail('${r.id}')">상세보기</button>
+          <button class="btn-xs btn-del" onclick="deleteHistory('${r.id}')">삭제</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteHistory(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  history = history.filter(r => r.id !== id);
+  localStorage.setItem('safetyHistory', JSON.stringify(history));
+  renderHistory();
+  renderStats();
+}
+
+function openHistDetail(id) {
+  const r = history.find(x => x.id === id);
+  if (!r) return;
+  const hazards = (r.hazards||[]).sort((a,b) => b.score - a.score);
+  if (!r.done) r.done = {};
+  let html = '';
+  if (r.thumb) {
+    const markers = hazards.map((h, i) => {
+      const loc = h.location;
+      if (!loc || typeof loc.x !== 'number' || typeof loc.y !== 'number') return '';
+      const x = Math.min(96, Math.max(4, loc.x)), y = Math.min(95, Math.max(5, loc.y));
+      return `<span class="hz-marker ${h.grade}" style="left:${x}%;top:${y}%;width:30px;height:30px;font-size:13px;cursor:default;">${i+1}</span>`;
+    }).join('');
+    html += `<div class="photo-wrap" style="cursor:default;"><img src="${r.thumb}" alt="현장 사진"><div class="marker-layer">${markers}</div></div>`;
+  }
+  html += `<p style="font-size:13px;color:var(--sub);margin-bottom:10px;">${r.date} · <span class="grade-chip chip-${r.top_grade}" style="font-size:11px;padding:2px 9px;">${GRADE_LABEL[r.top_grade]}</span></p>`;
+  html += `<p style="font-size:13px;color:#37474f;line-height:1.7;margin-bottom:12px;">📍 ${esc(r.scene)}</p>`;
+  if (r.urgent && r.urgent.length) {
+    html += `<div class="urgent-box" style="margin-bottom:12px;"><h4>🚨 즉시 조치</h4><ul>${r.urgent.map(u=>`<li>${esc(u)}</li>`).join('')}</ul></div>`;
+  }
+  html += `<p style="font-size:12px;color:var(--sub);margin-bottom:10px;">✅ 완료한 개선조치를 체크하면 자동 저장됩니다. 조치 이행 현황이 기록 목록에 표시됩니다.</p>`;
+  hazards.forEach((h, i) => {
+    const imps = (h.improvements||[]).map(normImprovement);
+    const noLoc = (!h.location) ? `<div style="padding:0 14px 4px;"><span class="no-marker-badge">📋 사진에 표시되지 않는 위험 (관리적 요인)</span></div>` : '';
+    html += `<div class="hazard-card ${h.grade}" style="margin-bottom:10px;">
+      <div class="hc-head ${h.grade}" style="cursor:default;">
+        <div class="hc-icon">${TYPE_ICON[h.type]||'⚠️'}</div>
+        <div class="hc-info"><div class="hc-title"><span class="hc-num ${h.grade}">${i+1}</span>${esc(h.title)}</div><div class="hc-type">${esc(h.type)}</div></div>
+        <div class="hc-score"><div class="score-num ${h.grade}">${h.score}</div><div class="score-label">점수</div></div>
+      </div>
+      ${noLoc}
+      <div class="hc-body open">
+        <div class="hc-detail-row"><div class="hk">설명</div><div class="hv">${esc(h.description)}</div></div>
+        <div class="hc-detail-row"><div class="hk">법령</div><div class="law-badge">⚖️ ${esc(h.law)}</div></div>
+        <div class="hc-detail-row"><div class="hk">개선 조치 체크리스트</div>
+          ${imps.map((m, j) => {
+            const key = `${i}-${j}`;
+            const done = !!r.done[key];
+            const badge = m.term ? `<span class="term-badge term-${m.term}">${m.term}</span>` : '';
+            return `<label class="imp-check ${done?'done':''}">
+              <input type="checkbox" ${done?'checked':''} onchange="toggleImpDone('${r.id}','${key}',this)">
+              <span class="imp-txt">${badge}${esc(m.action)}</span>
+            </label>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  });
+  html += `<div class="disclaimer"><span>⚠️</span><span><b>AI 참고자료</b>이며 법정 위험성평가를 대체하지 않습니다. 전문가의 현장 확인이 필요합니다.</span></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('hist-modal').classList.add('open');
+}
+
+// 조치완료 체크 → 즉시 저장 + 목록 갱신
+function toggleImpDone(recordId, key, cb) {
+  const r = history.find(x => x.id === recordId);
+  if (!r) return;
+  if (!r.done) r.done = {};
+  if (cb.checked) r.done[key] = true; else delete r.done[key];
+  localStorage.setItem('safetyHistory', JSON.stringify(history));
+  cb.closest('.imp-check').classList.toggle('done', cb.checked);
+  renderHistory();
+}
+function closeModal() { document.getElementById('hist-modal').classList.remove('open'); }
+
+// ================================================================
+// STATS
+// ================================================================
+let statsPeriod = 'all';
+function setStatsPeriod(p) {
+  statsPeriod = p;
+  document.getElementById('period-all').classList.toggle('on', p === 'all');
+  document.getElementById('period-30').classList.toggle('on', p === '30');
+  renderStats();
+}
+function renderStats() {
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const rows = statsPeriod === '30' ? history.filter(r => (r.ts||0) >= cutoff) : history;
+  const total = rows.length;
+  const cnt = {low:0,medium:0,high:0,critical:0};
+  const tcnt = {};
+  let totalHazards = 0;
+  rows.forEach(r => {
+    cnt[r.top_grade]++;
+    totalHazards += r.hazard_count||0;
+    (r.hazards||[]).forEach(h => { tcnt[h.type] = (tcnt[h.type]||0)+1; });
+  });
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-crit').textContent = cnt.critical;
+  document.getElementById('s-hazards').textContent = totalHazards;
+  const bars = [
+    {label:'🔴 매우 높음', c:cnt.critical, col:'var(--critical)'},
+    {label:'🟠 높음',       c:cnt.high,     col:'var(--high)'},
+    {label:'🟡 보통',       c:cnt.medium,   col:'#f9a825'},
+    {label:'🟢 낮음',       c:cnt.low,      col:'var(--low)'},
+  ];
+  document.getElementById('stat-bars').innerHTML = bars.map(b=>`
+    <div class="bar-item">
+      <div class="bar-row"><span>${b.label}</span><span>${b.c}건</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${total?Math.round(b.c/total*100):0}%;background:${b.col};"></div></div>
+    </div>`).join('');
+  const te = Object.entries(tcnt).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxT = te[0]?.[1]||1;
+  document.getElementById('type-bars').innerHTML = te.length
+    ? te.map(([t,c])=>`
+      <div class="bar-item">
+        <div class="bar-row"><span>${TYPE_ICON[t]||'⚠️'} ${esc(t)}</span><span>${c}건</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/maxT*100)}%;background:var(--blue);"></div></div>
+      </div>`).join('')
+    : '<div class="empty">데이터 없음</div>';
+}
+
+// ================================================================
+// SETTINGS
+// ================================================================
+function applyAccessState() {
+  const notice = document.getElementById('no-api-notice');
+  const form   = document.getElementById('analyze-form');
+  const banner = document.getElementById('demo-banner');
+  const allowed = cfg.demoMode || cfg.apiKey;
+  if (allowed) { notice.style.display='none';  form.style.display='block'; }
+  else         { notice.style.display='block'; form.style.display='none'; }
+  if (banner) banner.style.display = cfg.demoMode ? 'flex' : 'none';
+}
+function onProviderChange() {
+  const prov = document.getElementById('cfg-provider').value;
+  const keyLabel = document.getElementById('api-key-label');
+  const keyInput = document.getElementById('cfg-apikey');
+  const keyHint = document.getElementById('api-key-hint');
+  const modelSelect = document.getElementById('cfg-model');
+
+  if (prov === 'gemini') {
+    keyLabel.textContent = 'Gemini API 키';
+    keyInput.placeholder = 'AIzaSy...';
+    keyHint.innerHTML = `
+      • 발급: <b>aistudio.google.com</b> (Google AI Studio)에서 무료로 API 키를 발급할 수 있습니다.<br>
+      • API 키는 이 기기의 브라우저에만 저장됩니다.<br>
+      • 무료 요금제 사용 시 호출당 비용이 들지 않습니다. (분당 약 15회 호출 제한)
+    `;
+    
+    modelSelect.innerHTML = `
+      <option value="gemini-2.5-flash">gemini-2.5-flash (기본 — 추천, 빠르고 똑똑함)</option>
+      <option value="gemini-2.5-pro">gemini-2.5-pro (고성능 — 정확도 매우 높음)</option>
+      <option value="gemini-1.5-flash">gemini-1.5-flash (이전 세대 속도형)</option>
+      <option value="gemini-1.5-pro">gemini-1.5-pro (이전 세대 고성능)</option>
+    `;
+  } else {
+    keyLabel.textContent = 'Anthropic API 키';
+    keyInput.placeholder = 'sk-ant-api03-...';
+    keyHint.innerHTML = `
+      • 발급: <b>console.anthropic.com</b> 무료 가입 → API Keys (가입 시 $5 무료 제공)<br>
+      • API 키는 이 기기의 브라우저에만 저장됩니다.<br>
+      • 분석 1회당 약 10~30원 수준
+    `;
+    
+    modelSelect.innerHTML = `
+      <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022 (권장 — 정확도 높음)</option>
+      <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022 (빠름 — 비용 절감)</option>
+    `;
+  }
+}
+function loadSettings() {
+  if (!cfg.provider) {
+    if (cfg.apiKey && cfg.apiKey.startsWith('sk-ant')) {
+      cfg.provider = 'anthropic';
+    } else {
+      cfg.provider = 'gemini';
+    }
+  }
+  if (cfg.provider === 'gemini') {
+    if (!cfg.model || !cfg.model.startsWith('gemini')) {
+      cfg.model = 'gemini-2.5-flash';
+    }
+  } else {
+    if (!cfg.model || !cfg.model.startsWith('claude')) {
+      cfg.model = 'claude-3-5-sonnet-20241022';
+    }
+  }
+
+  document.getElementById('cfg-provider').value = cfg.provider;
+  onProviderChange();
+  
+  document.getElementById('cfg-apikey').value  = cfg.apiKey||'';
+  if (cfg.model) {
+    document.getElementById('cfg-model').value = cfg.model;
+  }
+  document.getElementById('cfg-company').value = cfg.company||'';
+  document.getElementById('cfg-dept').value    = cfg.dept||'';
+  document.getElementById('cfg-manager').value = cfg.manager||'';
+  document.getElementById('cfg-demo').checked  = !!cfg.demoMode;
+  updateHeader();
+  applyAccessState();
+}
+function saveSettings() {
+  cfg = {
+    provider: document.getElementById('cfg-provider').value,
+    apiKey:   document.getElementById('cfg-apikey').value.trim(),
+    model:    document.getElementById('cfg-model').value,
+    demoMode: document.getElementById('cfg-demo').checked,
+    company:  document.getElementById('cfg-company').value.trim(),
+    dept:     document.getElementById('cfg-dept').value.trim(),
+    manager:  document.getElementById('cfg-manager').value.trim()
+  };
+  localStorage.setItem('safetyCfg', JSON.stringify(cfg));
+  updateHeader();
+  applyAccessState();
+  alert('설정이 저장되었습니다.');
+}
+function onDemoToggle(cb) {
+  cfg.demoMode = cb.checked;
+  localStorage.setItem('safetyCfg', JSON.stringify(cfg));
+  applyAccessState();
+}
+function updateHeader() {
+  const parts = [cfg.company, cfg.dept].filter(Boolean);
+  document.getElementById('hdr-sub').textContent = parts.length
+    ? parts.join(' · ')
+    : '사진 한 장으로 현장 위험요소 자동 분석';
+}
+function toggleApiKey() {
+  const inp = document.getElementById('cfg-apikey');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+function deleteApiKey() {
+  if (!confirm('저장된 API 키를 삭제하시겠습니까?\n삭제 후에는 데모 모드만 사용 가능합니다.')) return;
+  cfg.apiKey = '';
+  localStorage.setItem('safetyCfg', JSON.stringify(cfg));
+  document.getElementById('cfg-apikey').value = '';
+  applyAccessState();
+  alert('API 키가 삭제되었습니다.');
+}
+
+// ================================================================
+// 보고서 출력 (위험성평가 기록 보존용)
+// ================================================================
+function printReport() {
+  if (!lastResult) return;
+  const hazards = (lastResult.hazards||[]).sort((a,b) => b.score - a.score);
+  const gcnt = {critical:0,high:0,medium:0,low:0};
+  hazards.forEach(h => gcnt[h.grade]++);
+  const markers = hazards.map((h, i) => {
+    const loc = h.location;
+    if (!loc || typeof loc.x !== 'number' || typeof loc.y !== 'number') return '';
+    const x = Math.min(96, Math.max(4, loc.x)), y = Math.min(95, Math.max(5, loc.y));
+    return `<span class="hz-marker ${h.grade}" style="left:${x}%;top:${y}%;width:28px;height:28px;font-size:12px;">${i+1}</span>`;
+  }).join('');
+  let html = `
+    <div class="rp-head">
+      <h1>🛡️ AI 안전보건 위험성 평가 보고서</h1>
+      <div class="rp-meta">
+        평가일: ${new Date().toLocaleDateString('ko-KR')} &nbsp;|&nbsp;
+        ${cfg.company ? '기관: ' + esc(cfg.company) + ' &nbsp;|&nbsp; ' : ''}
+        ${cfg.dept ? '부서: ' + esc(cfg.dept) + ' &nbsp;|&nbsp; ' : ''}
+        ${cfg.manager ? '담당자: ' + esc(cfg.manager) + ' &nbsp;|&nbsp; ' : ''}
+        종합등급: <b>${GRADE_LABEL[lastResult.top_grade]}</b> &nbsp;|&nbsp;
+        위험요소: ${hazards.length}건 (🔴${gcnt.critical} 🟠${gcnt.high} 🟡${gcnt.medium} 🟢${gcnt.low})
+      </div>
+    </div>`;
+  if (currentPhotoB64) {
+    html += `<div class="photo-wrap"><img src="${currentPhotoB64}" alt="현장 사진"><div class="marker-layer">${markers}</div></div>`;
+  }
+  html += `<p style="font-size:13px;line-height:1.7;margin-bottom:14px;">📍 ${esc(lastResult.scene||'')}</p>`;
+  if (lastResult.urgent && lastResult.urgent.length) {
+    html += `<div class="urgent-box"><h4>🚨 즉시 조치 필요</h4><ul>${lastResult.urgent.map(u=>`<li>${esc(u)}</li>`).join('')}</ul></div>`;
+  }
+  hazards.forEach((h, i) => {
+    html += `<div class="hazard-card ${h.grade}" style="margin-bottom:10px;">
+      <div class="hc-head ${h.grade}">
+        <div class="hc-icon">${TYPE_ICON[h.type]||'⚠️'}</div>
+        <div class="hc-info"><div class="hc-title"><span class="hc-num ${h.grade}">${i+1}</span>${esc(h.title)}</div><div class="hc-type">${esc(h.type)} · 빈도 ${h.frequency} × 강도 ${h.severity}</div></div>
+        <div class="hc-score"><div class="score-num ${h.grade}">${h.score}</div><div class="score-label">${GRADE_LABEL[h.grade]}</div></div>
+      </div>
+      <div class="hc-body open">
+        <div class="hc-detail-row"><div class="hk">설명</div><div class="hv">${esc(h.description)}</div></div>
+        <div class="hc-detail-row"><div class="hk">관련 법령</div><div class="law-badge">⚖️ ${esc(h.law)}</div></div>
+        <div class="hc-detail-row"><div class="hk">개선 방향 (시급도순)</div><ul class="improve-list">${renderImprovements(h.improvements)}</ul></div>
+      </div>
+    </div>`;
+  });
+  html += `<div class="disclaimer"><span>⚠️</span><span><b>본 보고서는 AI 분석 참고자료입니다.</b> 산업안전보건법 제36조에 따른 법정 위험성평가를 대체하지 않으며, 안전관리자 등 전문가의 현장 확인·서명을 거쳐 활용하십시오.</span></div>
+    <div class="rp-sign">
+      <div class="sg"><div class="sg-lbl">평가자 (서명)</div></div>
+      <div class="sg"><div class="sg-lbl">안전관리책임자 확인 (서명)</div></div>
+    </div>`;
+  document.getElementById('report-view').innerHTML = html;
+  document.body.classList.add('print-report');
+  const cleanup = () => { document.body.classList.remove('print-report'); window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  window.print();
+}
+
+// ================================================================
+// NAV / UTIL
+// ================================================================
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='history') renderHistory();
+  if (name==='stats')   renderStats();
+}
+function showLoading(show, msg) {
+  const el = document.getElementById('loading');
+  el.classList.toggle('show', show);
+  if (msg) document.getElementById('loading-step').textContent = msg;
+}
+function setLoadingStep(msg) {
+  document.getElementById('loading-step').textContent = msg;
+}
+function tick() { return new Promise(r => setTimeout(r, 50)); }
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+document.getElementById('hist-modal').addEventListener('click', function(e) {
+  if (e.target===this) closeModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { closeLightbox(); closeModal(); }
+});
+
+// ================================================================
+// INIT
+// ================================================================
+loadSettings();
+</script>
+</body>
+</html>
